@@ -16,8 +16,6 @@ export function SearchView({ onSubmit }: SearchViewProps) {
     }
   };
 
-  const examples = ['Learn AI in 5 days', 'JavaScript basics', 'Photography fundamentals'];
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4">
       <motion.div
@@ -92,40 +90,22 @@ export function SearchView({ onSubmit }: SearchViewProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7, duration: 0.6 }}
-          className="mt-8 flex flex-wrap items-center justify-center gap-3"
+          className="mt-8 flex flex-wrap justify-center gap-3"
         >
           <span className="text-sm text-muted-foreground">Try:</span>
-          {examples.map((example, i) => (
+          {['Learn AI in 5 days', 'JavaScript basics', 'Photography fundamentals'].map((example, i) => (
             <motion.button
               key={example}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.8 + i * 0.1 }}
               onClick={() => setQuery(example)}
-              type="button"
-              className="px-4 py-2 text-sm bg-secondary hover:bg-accent text-secondary-foreground rounded-full transition-colors font-body border border-border"
+              className="px-3 py-1.5 text-sm bg-secondary hover:bg-accent text-secondary-foreground rounded-full transition-colors font-body"
             >
               {example}
             </motion.button>
           ))}
         </motion.div>
-
-        {/* Demo Mode Hint */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.2 }}
-          className="mt-8 text-xs text-muted-foreground/70"
-        >
-          Requires backend at localhost:8000. Use demo mode for testing →{' '}
-          <button
-            type="button"
-            onClick={() => onSubmit('__DEMO__')}
-            className="underline hover:text-primary transition-colors"
-          >
-            Try Demo
-          </button>
-        </motion.p>
       </motion.div>
     </div>
   );

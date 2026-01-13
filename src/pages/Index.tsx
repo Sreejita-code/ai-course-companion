@@ -1,7 +1,8 @@
 import { useCourse } from '@/hooks/useCourse';
 import { SearchView } from '@/components/SearchView';
 import { LoadingView } from '@/components/LoadingView';
-import { BookView } from '@/components/BookView';
+import { DayCoverView } from '@/components/DayCoverView';
+import { FlashcardView } from '@/components/FlashcardView';
 import { DayCompleteView } from '@/components/DayCompleteView';
 import { CourseCompleteView } from '@/components/CourseCompleteView';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -18,7 +19,6 @@ const Index = () => {
     previousCard,
     proceedToNextDay,
     restartCourse,
-    setDayCompleteState,
   } = useCourse();
 
   const renderContent = () => {
@@ -30,20 +30,31 @@ const Index = () => {
         return <LoadingView message="Crafting your learning journey..." />;
 
       case 'day-cover':
-      case 'loading-content':
-      case 'flashcards':
         if (!plan) return null;
+        const dayInfo = plan.schedule.find((d) => d.day === state.currentDay);
+        if (!dayInfo) return null;
         return (
-          <BookView
-            plan={plan}
-            dayContents={dayContents}
-            currentDay={state.step === 'flashcards' ? state.currentDay : state.currentDay}
-            currentCard={state.step === 'flashcards' ? state.currentCard : 0}
-            isLoadingContent={state.step === 'loading-content'}
-            onStartDay={startDay}
-            onNextCard={nextCard}
-            onPreviousCard={previousCard}
-            onDayComplete={() => setDayCompleteState(state.step === 'flashcards' ? state.currentDay : 1)}
+          <DayCoverView
+            dayNumber={state.currentDay}
+            totalDays={plan.total_days}
+            dayInfo={dayInfo}
+            onStart={() => startDay(state.currentDay)}
+          />
+        );
+
+      case 'loading-content':
+        return <LoadingView message={`Preparing Day ${state.currentDay}...`} />;
+
+      case 'flashcards':
+        const content = dayContents[state.currentDay];
+        if (!content) return null;
+        return (
+          <FlashcardView
+            flashcards={content.flashcards}
+            currentIndex={state.currentCard}
+            dayNumber={state.currentDay}
+            onNext={nextCard}
+            onPrevious={previousCard}
           />
         );
 
