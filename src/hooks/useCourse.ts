@@ -7,6 +7,7 @@ export function useCourse() {
   const [state, setState] = useState<AppState>({ step: 'search' });
   const [plan, setPlan] = useState<CoursePlan | null>(null);
   const [dayContents, setDayContents] = useState<Record<number, DayContent>>({});
+  const [completedDays, setCompletedDays] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const generatePlan = useCallback(async (prompt: string) => {
@@ -30,6 +31,15 @@ export function useCourse() {
       setState({ step: 'search' });
     }
   }, []);
+
+  const goToDay = useCallback((dayNumber: number) => {
+    // If content is already loaded, go to flashcards, otherwise show cover
+    if (dayContents[dayNumber]) {
+      setState({ step: 'flashcards', currentDay: dayNumber, currentCard: 0 });
+    } else {
+      setState({ step: 'day-cover', currentDay: dayNumber });
+    }
+  }, [dayContents]);
 
   const startDay = useCallback(async (dayNumber: number) => {
     setState({ step: 'loading-content', currentDay: dayNumber });
@@ -68,6 +78,10 @@ export function useCourse() {
     if (state.currentCard < content.flashcards.length - 1) {
       setState({ ...state, currentCard: state.currentCard + 1 });
     } else {
+      // Mark day as completed
+      setCompletedDays(prev => 
+        prev.includes(state.currentDay) ? prev : [...prev, state.currentDay]
+      );
       setState({ step: 'day-complete', currentDay: state.currentDay });
     }
   }, [state, dayContents]);
@@ -94,6 +108,7 @@ export function useCourse() {
     setState({ step: 'search' });
     setPlan(null);
     setDayContents({});
+    setCompletedDays([]);
     setError(null);
   }, []);
 
@@ -101,8 +116,10 @@ export function useCourse() {
     state,
     plan,
     dayContents,
+    completedDays,
     error,
     generatePlan,
+    goToDay,
     startDay,
     nextCard,
     previousCard,
