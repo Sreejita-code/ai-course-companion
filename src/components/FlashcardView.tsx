@@ -190,7 +190,10 @@ export function FlashcardView({
                           <span>Complete Day</span>
                         </>
                       ) : (
-                        <ChevronRight className="w-6 h-6" />
+                        <>
+                          <span>Next Page</span>
+                          <ChevronRight className="w-5 h-5" />
+                        </>
                       )}
                     </motion.button>
                   </motion.div>
