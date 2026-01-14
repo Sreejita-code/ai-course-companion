@@ -1,19 +1,40 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Sparkles } from 'lucide-react';
+import { BookOpen, Sparkles, Clock, Zap, GraduationCap, Trophy } from 'lucide-react';
 
 interface SearchViewProps {
   onSubmit: (prompt: string) => void;
 }
 
+const durationOptions = [
+  { label: '3 Days', subtitle: 'Crash Course', icon: Zap, days: 3 },
+  { label: '7 Days', subtitle: 'Standard', icon: GraduationCap, days: 7 },
+  { label: '30 Days', subtitle: 'Mastery', icon: Trophy, days: 30 },
+];
+
 export function SearchView({ onSubmit }: SearchViewProps) {
   const [query, setQuery] = useState('');
+  const [selectedDuration, setSelectedDuration] = useState<number | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      onSubmit(query.trim());
+      // If no duration selected and no duration detected in query, default to 7 days
+      const hasDuration = /\d+\s*(day|days|week|weeks|month)/i.test(query);
+      let finalPrompt = query.trim();
+      
+      if (!hasDuration && selectedDuration) {
+        finalPrompt = `${query.trim()} for ${selectedDuration} days`;
+      } else if (!hasDuration && !selectedDuration) {
+        finalPrompt = `${query.trim()} for 7 days`;
+      }
+      
+      onSubmit(finalPrompt);
     }
+  };
+
+  const handleDurationClick = (days: number) => {
+    setSelectedDuration(days);
   };
 
   return (
@@ -64,41 +85,91 @@ export function SearchView({ onSubmit }: SearchViewProps) {
         >
           <div className="relative group">
             <div className="absolute -inset-1 bg-gradient-to-r from-primary/30 via-gold/30 to-primary/30 rounded-xl blur-lg opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-500" />
-            <div className="relative flex items-center bg-card rounded-xl book-shadow border border-border overflow-hidden">
+            <div className="relative bg-card rounded-xl book-shadow border border-border overflow-hidden">
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="What do you want to learn?"
-                className="flex-1 px-6 py-5 bg-transparent text-lg font-body placeholder:text-muted-foreground focus:outline-none"
+                className="w-full px-6 py-5 bg-transparent text-lg font-body placeholder:text-muted-foreground focus:outline-none"
               />
-              <motion.button
-                type="submit"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="m-2 px-6 py-3 gold-gradient text-primary-foreground font-semibold rounded-lg flex items-center gap-2 shadow-lg hover:shadow-xl transition-shadow"
-              >
-                <Sparkles className="w-5 h-5" />
-                <span className="hidden sm:inline">Generate</span>
-              </motion.button>
             </div>
           </div>
+
+          {/* Duration Chips */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
+            className="mt-6 flex flex-wrap justify-center gap-3"
+          >
+            <div className="flex items-center gap-2 text-muted-foreground mr-2">
+              <Clock className="w-4 h-4" />
+              <span className="text-sm font-medium">Duration:</span>
+            </div>
+            {durationOptions.map((option, i) => {
+              const Icon = option.icon;
+              const isSelected = selectedDuration === option.days;
+              
+              return (
+                <motion.button
+                  key={option.days}
+                  type="button"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.7 + i * 0.1 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleDurationClick(option.days)}
+                  className={`
+                    px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all duration-300
+                    ${isSelected 
+                      ? 'gold-gradient text-primary-foreground shadow-lg' 
+                      : 'bg-card border border-border hover:border-primary/50 text-foreground'
+                    }
+                  `}
+                >
+                  <Icon className="w-4 h-4" />
+                  <div className="text-left">
+                    <div className="font-semibold text-sm">{option.label}</div>
+                    <div className={`text-xs ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                      {option.subtitle}
+                    </div>
+                  </div>
+                </motion.button>
+              );
+            })}
+          </motion.div>
+
+          {/* Generate Button */}
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.9, duration: 0.5 }}
+            type="submit"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="mt-8 w-full max-w-sm mx-auto py-4 gold-gradient text-primary-foreground font-semibold text-lg rounded-xl flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-shadow"
+          >
+            <Sparkles className="w-5 h-5" />
+            <span>Generate Course</span>
+          </motion.button>
         </motion.form>
 
         {/* Examples */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.7, duration: 0.6 }}
-          className="mt-8 flex flex-wrap justify-center gap-3"
+          transition={{ delay: 1, duration: 0.6 }}
+          className="mt-10 flex flex-wrap justify-center gap-3"
         >
           <span className="text-sm text-muted-foreground">Try:</span>
-          {['Learn AI in 5 days', 'JavaScript basics', 'Photography fundamentals'].map((example, i) => (
+          {['Python programming', 'Machine Learning', 'Web Development'].map((example, i) => (
             <motion.button
               key={example}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.8 + i * 0.1 }}
+              transition={{ delay: 1.1 + i * 0.1 }}
               onClick={() => setQuery(example)}
               className="px-3 py-1.5 text-sm bg-secondary hover:bg-accent text-secondary-foreground rounded-full transition-colors font-body"
             >
