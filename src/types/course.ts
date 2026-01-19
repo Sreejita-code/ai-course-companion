@@ -22,6 +22,7 @@ export interface DayContent {
 export type AppState = 
   | { step: 'search' }
   | { step: 'loading-plan' }
+  | { step: 'overview' }
   | { step: 'day-cover'; currentDay: number }
   | { step: 'loading-content'; currentDay: number }
   | { step: 'flashcards'; currentDay: number; currentCard: number }

@@ -5,10 +5,12 @@ import { DaySchedule } from '@/types/course';
 
 interface TopNavigationProps {
   schedule: DaySchedule[];
-  currentDay: number;
+  currentDay?: number;
   completedDays: number[];
   onDayClick: (day: number) => void;
   onBack: () => void;
+  showOverview?: boolean;
+  onOverviewClick?: () => void;
 }
 
 export function TopNavigation({ 
@@ -16,7 +18,9 @@ export function TopNavigation({
   currentDay, 
   completedDays,
   onDayClick,
-  onBack 
+  onBack,
+  showOverview = true,
+  onOverviewClick
 }: TopNavigationProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -40,6 +44,7 @@ export function TopNavigation({
 
   useEffect(() => {
     // Auto-scroll to current day
+    if (currentDay === undefined) return;
     const container = scrollContainerRef.current;
     if (container) {
       const dayButton = container.querySelector(`[data-day="${currentDay}"]`);
@@ -81,6 +86,21 @@ export function TopNavigation({
             </span>
           </motion.button>
 
+          {/* Overview Button */}
+          {showOverview && onOverviewClick && (
+            <>
+              <div className="h-6 w-px bg-border" />
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onOverviewClick}
+                className="px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                Overview
+              </motion.button>
+            </>
+          )}
+
           {/* Separator */}
           <div className="h-6 w-px bg-border" />
 
@@ -109,7 +129,7 @@ export function TopNavigation({
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {schedule.map((day) => {
-                const isActive = day.day === currentDay;
+                const isActive = currentDay !== undefined && day.day === currentDay;
                 const isCompleted = completedDays.includes(day.day);
                 
                 return (

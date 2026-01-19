@@ -25,7 +25,7 @@ export function useCourse() {
       
       const data: CoursePlan = await response.json();
       setPlan(data);
-      setState({ step: 'day-cover', currentDay: 1 });
+      setState({ step: 'overview' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setState({ step: 'search' });
@@ -104,6 +104,10 @@ export function useCourse() {
     }
   }, [state, plan]);
 
+  const goToOverview = useCallback(() => {
+    setState({ step: 'overview' });
+  }, []);
+
   const restartCourse = useCallback(() => {
     setState({ step: 'search' });
     setPlan(null);
@@ -120,6 +124,7 @@ export function useCourse() {
     error,
     generatePlan,
     goToDay,
+    goToOverview,
     startDay,
     nextCard,
     previousCard,
