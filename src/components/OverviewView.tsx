@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { BookOpen, ChevronRight, Sparkles, Calendar } from 'lucide-react';
+import { BookOpen, Sparkles, Calendar, Check } from 'lucide-react';
 import { DaySchedule } from '@/types/course';
 
 interface OverviewViewProps {
@@ -10,137 +10,138 @@ interface OverviewViewProps {
 }
 
 export function OverviewView({ topic, schedule, completedDays, onDayClick }: OverviewViewProps) {
+  // Calculate grid columns based on total days
+  const getGridCols = (totalDays: number) => {
+    if (totalDays <= 7) return 'grid-cols-7';
+    if (totalDays <= 14) return 'grid-cols-7';
+    if (totalDays <= 21) return 'grid-cols-7';
+    return 'grid-cols-7 sm:grid-cols-10';
+  };
+
   return (
-    <div className="min-h-screen flex flex-col items-center py-12 px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center py-8 px-4">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="text-center mb-12 max-w-2xl"
+        className="text-center mb-8 max-w-2xl"
       >
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-          className="mb-6 inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 border border-primary/20"
+          className="mb-4 inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 border border-primary/20"
         >
-          <Calendar className="w-8 h-8 text-primary" />
+          <Calendar className="w-7 h-7 text-primary" />
         </motion.div>
         
-        <h1 className="font-display text-4xl md:text-5xl font-bold mb-4 text-foreground">
+        <h1 className="font-display text-3xl md:text-4xl font-bold mb-2 text-foreground">
           Your <span className="text-gold-gradient">{topic}</span> Journey
         </h1>
-        <p className="text-lg text-muted-foreground font-body">
-          {schedule.length} days of interactive learning ahead. Choose a day to begin.
+        <p className="text-base text-muted-foreground font-body">
+          {schedule.length} days of learning • Click any day to begin
         </p>
       </motion.div>
 
-      {/* Day Cards - Horizontal Scroll */}
+      {/* Calendar Grid */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.3, duration: 0.6 }}
-        className="w-full max-w-6xl"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.3, duration: 0.5 }}
+        className="w-full max-w-4xl"
       >
-        <div className="overflow-x-auto scrollbar-hide pb-4">
-          <div className="flex gap-6 px-4 min-w-max">
+        <div className="bg-card rounded-2xl border border-border p-4 md:p-6 book-shadow">
+          {/* Week Headers */}
+          <div className="grid grid-cols-7 gap-2 mb-3">
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
+              <div key={day} className="text-center text-xs font-medium text-muted-foreground py-1">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          {/* Day Cells */}
+          <div className="grid grid-cols-7 gap-2">
             {schedule.map((day, index) => {
               const isCompleted = completedDays.includes(day.day);
               
               return (
-                <motion.div
+                <motion.button
                   key={day.day}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 + index * 0.1, duration: 0.5 }}
-                  whileHover={{ y: -8, transition: { duration: 0.2 } }}
-                  className="flex-shrink-0 w-72"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.4 + index * 0.02, duration: 0.3 }}
+                  whileHover={{ scale: 1.08, zIndex: 10 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => onDayClick(day.day)}
+                  className={`
+                    relative aspect-square rounded-xl p-2 flex flex-col items-center justify-center
+                    transition-all duration-200 group cursor-pointer
+                    ${isCompleted 
+                      ? 'gold-gradient text-primary-foreground shadow-md' 
+                      : 'bg-secondary/50 hover:bg-primary/10 border border-border hover:border-primary/50'
+                    }
+                  `}
+                  title={`Day ${day.day}: ${day.focus_topic}`}
                 >
-                  <div
-                    className={`
-                      relative h-full bg-card rounded-2xl border overflow-hidden
-                      book-shadow hover:shadow-xl transition-shadow duration-300
-                      ${isCompleted ? 'border-primary/50' : 'border-border'}
-                    `}
-                  >
-                    {/* Completed Badge */}
-                    {isCompleted && (
-                      <div className="absolute top-4 right-4 z-10">
-                        <div className="w-8 h-8 rounded-full gold-gradient flex items-center justify-center">
-                          <Sparkles className="w-4 h-4 text-primary-foreground" />
-                        </div>
-                      </div>
-                    )}
+                  {/* Day Number */}
+                  <span className={`
+                    font-display font-bold text-lg md:text-xl
+                    ${isCompleted ? 'text-primary-foreground' : 'text-foreground'}
+                  `}>
+                    {day.day}
+                  </span>
 
-                    {/* Card Header */}
-                    <div className="p-6 pb-4">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className={`
-                          w-12 h-12 rounded-xl flex items-center justify-center font-display font-bold text-lg
-                          ${isCompleted 
-                            ? 'gold-gradient text-primary-foreground' 
-                            : 'bg-primary/10 text-primary border border-primary/20'
-                          }
-                        `}>
-                          {day.day}
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground font-body">Day {day.day}</p>
-                          <h3 className="font-display font-semibold text-foreground line-clamp-1">
-                            {day.focus_topic}
-                          </h3>
-                        </div>
-                      </div>
+                  {/* Completed Check */}
+                  {isCompleted && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-background border-2 border-primary flex items-center justify-center"
+                    >
+                      <Check className="w-3 h-3 text-primary" />
+                    </motion.div>
+                  )}
 
-                      {/* Summary */}
-                      <p className="text-sm text-muted-foreground font-body line-clamp-3 mb-6 min-h-[3.75rem]">
-                        {day.summary}
-                      </p>
-                    </div>
-
-                    {/* Card Footer */}
-                    <div className="px-6 pb-6">
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => onDayClick(day.day)}
-                        className={`
-                          w-full py-3 px-4 rounded-xl font-semibold text-sm
-                          flex items-center justify-center gap-2 transition-all
-                          ${isCompleted
-                            ? 'bg-secondary text-secondary-foreground hover:bg-accent'
-                            : 'gold-gradient text-primary-foreground shadow-md hover:shadow-lg'
-                          }
-                        `}
-                      >
-                        <BookOpen className="w-4 h-4" />
-                        <span>{isCompleted ? 'Review Flashcards' : 'View Flashcards'}</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </motion.button>
-                    </div>
-
-                    {/* Decorative Corner */}
-                    <div className="absolute top-0 left-0 w-16 h-16 overflow-hidden">
-                      <div className="absolute -top-8 -left-8 w-16 h-16 bg-primary/5 rounded-full" />
-                    </div>
+                  {/* Hover Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-popover border border-border rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-20 min-w-48 max-w-64">
+                    <p className="font-display font-semibold text-sm text-foreground mb-1 line-clamp-1">
+                      {day.focus_topic}
+                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {day.summary}
+                    </p>
                   </div>
-                </motion.div>
+                </motion.button>
               );
             })}
+          </div>
+
+          {/* Legend */}
+          <div className="flex items-center justify-center gap-6 mt-6 pt-4 border-t border-border">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-secondary/50 border border-border" />
+              <span className="text-xs text-muted-foreground">Not Started</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded gold-gradient" />
+              <span className="text-xs text-muted-foreground">Completed</span>
+            </div>
           </div>
         </div>
       </motion.div>
 
-      {/* Quick Tips */}
+      {/* Progress Summary */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8, duration: 0.5 }}
-        className="mt-12 text-center"
+        transition={{ delay: 0.6, duration: 0.5 }}
+        className="mt-6 flex items-center gap-3"
       >
+        <Sparkles className="w-4 h-4 text-primary" />
         <p className="text-sm text-muted-foreground font-body">
-          💡 <span className="font-medium">Tip:</span> Complete days in order for the best learning experience
+          <span className="font-semibold text-foreground">{completedDays.length}</span> of {schedule.length} days completed
         </p>
       </motion.div>
     </div>
