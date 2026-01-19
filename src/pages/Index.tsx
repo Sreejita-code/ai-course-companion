@@ -1,6 +1,7 @@
 import { useCourse } from '@/hooks/useCourse';
 import { SearchView } from '@/components/SearchView';
 import { LoadingView } from '@/components/LoadingView';
+import { OverviewView } from '@/components/OverviewView';
 import { DayCoverView } from '@/components/DayCoverView';
 import { FlashcardView } from '@/components/FlashcardView';
 import { DayCompleteView } from '@/components/DayCompleteView';
@@ -17,6 +18,7 @@ const Index = () => {
     error,
     generatePlan,
     goToDay,
+    goToOverview,
     startDay,
     nextCard,
     previousCard,
@@ -33,6 +35,17 @@ const Index = () => {
 
       case 'loading-plan':
         return <LoadingView message="Building your syllabus..." />;
+
+      case 'overview':
+        if (!plan) return null;
+        return (
+          <OverviewView
+            topic={plan.topic}
+            schedule={plan.schedule}
+            completedDays={completedDays}
+            onDayClick={goToDay}
+          />
+        );
 
       case 'day-cover':
         if (!plan) return null;
@@ -102,10 +115,12 @@ const Index = () => {
           schedule={plan.schedule}
           currentDay={state.step === 'flashcards' || state.step === 'day-cover' || state.step === 'loading-content' || state.step === 'day-complete' 
             ? state.currentDay 
-            : 1}
+            : undefined}
           completedDays={completedDays}
           onDayClick={goToDay}
-          onBack={restartCourse}
+          onBack={goToOverview}
+          showOverview={state.step !== 'overview'}
+          onOverviewClick={goToOverview}
         />
       )}
 
