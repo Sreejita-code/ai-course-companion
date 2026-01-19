@@ -119,6 +119,7 @@ const Index = () => {
           completedDays={completedDays}
           onDayClick={goToDay}
           onBack={goToOverview}
+          onHome={restartCourse}
           showOverview={state.step !== 'overview'}
           onOverviewClick={goToOverview}
         />

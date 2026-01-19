@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
+import { ChevronLeft, ChevronRight, BookOpen, ArrowLeft } from 'lucide-react';
 import { DaySchedule } from '@/types/course';
 
 interface TopNavigationProps {
@@ -9,6 +9,7 @@ interface TopNavigationProps {
   completedDays: number[];
   onDayClick: (day: number) => void;
   onBack: () => void;
+  onHome: () => void;
   showOverview?: boolean;
   onOverviewClick?: () => void;
 }
@@ -19,6 +20,7 @@ export function TopNavigation({
   completedDays,
   onDayClick,
   onBack,
+  onHome,
   showOverview = true,
   onOverviewClick
 }: TopNavigationProps) {
@@ -72,8 +74,19 @@ export function TopNavigation({
       className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border"
     >
       <div className="max-w-6xl mx-auto px-4 py-3">
-        <div className="flex items-center gap-4">
-          {/* Back Button / Logo */}
+        <div className="flex items-center gap-2 sm:gap-4">
+          {/* Home Arrow */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onHome}
+            className="p-2 rounded-full bg-card border border-border text-foreground hover:bg-accent hover:border-primary/50 transition-all"
+            title="Back to Search"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </motion.button>
+
+          {/* Logo */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
