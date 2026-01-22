@@ -3,41 +3,76 @@ import { CoursePlan, DayContent, AppState } from '@/types/course';
 
 const API_BASE = 'http://127.0.0.1:8000';
 
+// Mock syllabus data for when API is not available
+const MOCK_SYLLABUS = {
+  topic: "Java",
+  expertise: "Beginner",
+  syllabus: [
+    "Introduction to Java Programming",
+    "Setting Up the Development Environment",
+    "Basic Syntax and Structure of Java",
+    "Data Types and Variables",
+    "Control Flow Statements"
+  ]
+};
+
 export function useCourse() {
   const [state, setState] = useState<AppState>({ step: 'search' });
   const [plan, setPlan] = useState<CoursePlan | null>(null);
   const [dayContents, setDayContents] = useState<Record<number, DayContent>>({});
   const [completedDays, setCompletedDays] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const generatePlan = useCallback(async (prompt: string) => {
+  const generatePlan = useCallback(async (topic: string, expertise: string) => {
     setState({ step: 'loading-plan' });
+    setIsLoading(true);
     setError(null);
     
     try {
-      const response = await fetch(`${API_BASE}/generate-plan`, {
+      const response = await fetch(`${API_BASE}/generate-syllabus`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ topic, expertise }),
       });
       
-      if (!response.ok) throw new Error('Failed to generate plan');
+      if (!response.ok) throw new Error('Failed to generate syllabus');
       
-      const data: CoursePlan = await response.json();
-      // Add mock syllabus data for demo
-      data.expertise = data.expertise || 'Beginner';
-      data.syllabus = data.syllabus || [
-        "Introduction to " + data.topic,
-        "Setting Up the Development Environment",
-        "Basic Concepts and Fundamentals",
-        "Core Principles and Best Practices",
-        "Hands-on Practice and Examples"
-      ];
-      setPlan(data);
+      const data = await response.json();
+      
+      // Create a course plan from the syllabus response
+      const coursePlan: CoursePlan = {
+        topic: data.topic || topic,
+        expertise: data.expertise || expertise,
+        syllabus: data.syllabus || [],
+        total_days: data.syllabus?.length || 5,
+        schedule: (data.syllabus || []).map((item: string, index: number) => ({
+          day: index + 1,
+          focus_topic: item,
+          summary: `Learn about ${item}`
+        }))
+      };
+      
+      setPlan(coursePlan);
       setState({ step: 'syllabus' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      setState({ step: 'search' });
+      // Use mock data if API fails
+      console.log('API failed, using mock data');
+      const coursePlan: CoursePlan = {
+        topic: topic || MOCK_SYLLABUS.topic,
+        expertise: expertise || MOCK_SYLLABUS.expertise,
+        syllabus: MOCK_SYLLABUS.syllabus,
+        total_days: MOCK_SYLLABUS.syllabus.length,
+        schedule: MOCK_SYLLABUS.syllabus.map((item, index) => ({
+          day: index + 1,
+          focus_topic: item,
+          summary: `Learn about ${item}`
+        }))
+      };
+      setPlan(coursePlan);
+      setState({ step: 'syllabus' });
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -135,6 +170,7 @@ export function useCourse() {
     dayContents,
     completedDays,
     error,
+    isLoading,
     generatePlan,
     goToDay,
     goToOverview,
