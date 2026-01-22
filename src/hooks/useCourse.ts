@@ -24,8 +24,17 @@ export function useCourse() {
       if (!response.ok) throw new Error('Failed to generate plan');
       
       const data: CoursePlan = await response.json();
+      // Add mock syllabus data for demo
+      data.expertise = data.expertise || 'Beginner';
+      data.syllabus = data.syllabus || [
+        "Introduction to " + data.topic,
+        "Setting Up the Development Environment",
+        "Basic Concepts and Fundamentals",
+        "Core Principles and Best Practices",
+        "Hands-on Practice and Examples"
+      ];
       setPlan(data);
-      setState({ step: 'overview' });
+      setState({ step: 'syllabus' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setState({ step: 'search' });
@@ -108,6 +117,10 @@ export function useCourse() {
     setState({ step: 'overview' });
   }, []);
 
+  const goToSyllabus = useCallback(() => {
+    setState({ step: 'syllabus' });
+  }, []);
+
   const restartCourse = useCallback(() => {
     setState({ step: 'search' });
     setPlan(null);
@@ -125,6 +138,7 @@ export function useCourse() {
     generatePlan,
     goToDay,
     goToOverview,
+    goToSyllabus,
     startDay,
     nextCard,
     previousCard,
