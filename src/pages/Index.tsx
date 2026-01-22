@@ -1,6 +1,7 @@
 import { useCourse } from '@/hooks/useCourse';
 import { SearchView } from '@/components/SearchView';
 import { LoadingView } from '@/components/LoadingView';
+import { SyllabusView } from '@/components/SyllabusView';
 import { OverviewView } from '@/components/OverviewView';
 import { DayCoverView } from '@/components/DayCoverView';
 import { FlashcardView } from '@/components/FlashcardView';
@@ -19,6 +20,7 @@ const Index = () => {
     generatePlan,
     goToDay,
     goToOverview,
+    goToSyllabus,
     startDay,
     nextCard,
     previousCard,
@@ -26,7 +28,7 @@ const Index = () => {
     restartCourse,
   } = useCourse();
 
-  const showNavigation = plan && state.step !== 'search' && state.step !== 'loading-plan' && state.step !== 'course-complete';
+  const showNavigation = plan && state.step !== 'search' && state.step !== 'loading-plan' && state.step !== 'syllabus' && state.step !== 'course-complete';
 
   const renderContent = () => {
     switch (state.step) {
@@ -35,6 +37,17 @@ const Index = () => {
 
       case 'loading-plan':
         return <LoadingView message="Building your syllabus..." />;
+
+      case 'syllabus':
+        if (!plan) return null;
+        return (
+          <SyllabusView
+            topic={plan.topic}
+            expertise={plan.expertise || 'Beginner'}
+            syllabus={plan.syllabus || []}
+            onContinue={goToOverview}
+          />
+        );
 
       case 'overview':
         if (!plan) return null;

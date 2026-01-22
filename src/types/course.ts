@@ -8,6 +8,8 @@ export interface CoursePlan {
   topic: string;
   total_days: number;
   schedule: DaySchedule[];
+  expertise?: string;
+  syllabus?: string[];
 }
 
 export interface Flashcard {
@@ -22,6 +24,7 @@ export interface DayContent {
 export type AppState = 
   | { step: 'search' }
   | { step: 'loading-plan' }
+  | { step: 'syllabus' }
   | { step: 'overview' }
   | { step: 'day-cover'; currentDay: number }
   | { step: 'loading-content'; currentDay: number }
