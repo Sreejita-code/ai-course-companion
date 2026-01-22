@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, GraduationCap, BookOpen, Sparkles } from 'lucide-react';
+import { ChevronRight, GraduationCap, BookOpen, Sparkles, RotateCcw } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
 interface SyllabusViewProps {
@@ -13,6 +13,7 @@ interface SyllabusViewProps {
 export function SyllabusView({ topic, expertise, syllabus, onContinue }: SyllabusViewProps) {
   const [remainingItems, setRemainingItems] = useState<string[]>(syllabus);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  const [removedItems, setRemovedItems] = useState<string[]>([]);
 
   const handleCheck = (item: string) => {
     setCheckedItems(prev => new Set(prev).add(item));
@@ -20,10 +21,19 @@ export function SyllabusView({ topic, expertise, syllabus, onContinue }: Syllabu
     // Remove item after animation completes
     setTimeout(() => {
       setRemainingItems(prev => prev.filter(i => i !== item));
+      setRemovedItems(prev => [...prev, item]);
     }, 400);
   };
 
+  const handleRevert = () => {
+    // Restore all removed items in their original order
+    setRemainingItems(syllabus);
+    setCheckedItems(new Set());
+    setRemovedItems([]);
+  };
+
   const allCompleted = remainingItems.length === 0;
+  const hasRemovedItems = removedItems.length > 0;
   const progress = ((syllabus.length - remainingItems.length) / syllabus.length) * 100;
 
   return (
@@ -193,25 +203,42 @@ export function SyllabusView({ topic, expertise, syllabus, onContinue }: Syllabu
         </div>
       </main>
 
-      {/* Floating Continue Button */}
-      {!allCompleted && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="fixed bottom-8 right-8"
+      {/* Floating Buttons */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6 }}
+        className="fixed bottom-8 right-8 flex items-center gap-3"
+      >
+        {/* Revert Button */}
+        <AnimatePresence>
+          {hasRemovedItems && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8, x: 20 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              exit={{ opacity: 0, scale: 0.8, x: 20 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleRevert}
+              className="flex items-center gap-2 px-5 py-3 bg-secondary text-secondary-foreground rounded-full font-semibold shadow-lg hover:shadow-xl transition-all border border-border"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Revert ({removedItems.length})
+            </motion.button>
+          )}
+        </AnimatePresence>
+
+        {/* Continue Button */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={onContinue}
+          className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
         >
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onContinue}
-            className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
-          >
-            Continue
-            <ChevronRight className="w-5 h-5" />
-          </motion.button>
-        </motion.div>
-      )}
+          Continue
+          <ChevronRight className="w-5 h-5" />
+        </motion.button>
+      </motion.div>
     </div>
   );
 }
