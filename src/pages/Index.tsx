@@ -17,6 +17,7 @@ const Index = () => {
     dayContents,
     completedDays,
     error,
+    isLoading,
     generatePlan,
     goToDay,
     goToOverview,
@@ -33,10 +34,10 @@ const Index = () => {
   const renderContent = () => {
     switch (state.step) {
       case 'search':
-        return <SearchView onSubmit={generatePlan} />;
+        return <SearchView onSubmit={generatePlan} isLoading={isLoading} />;
 
       case 'loading-plan':
-        return <LoadingView message="Building your syllabus..." />;
+        return <SearchView onSubmit={generatePlan} isLoading={true} />;
 
       case 'syllabus':
         if (!plan) return null;
@@ -110,7 +111,7 @@ const Index = () => {
         );
 
       default:
-        return <SearchView onSubmit={generatePlan} />;
+        return <SearchView onSubmit={generatePlan} isLoading={false} />;
     }
   };
 
