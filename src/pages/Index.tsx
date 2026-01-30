@@ -7,21 +7,34 @@ import { QuizView } from '@/components/QuizView';
 import { DayCompleteView } from '@/components/DayCompleteView';
 import { CourseCompleteView } from '@/components/CourseCompleteView';
 import { TopNavigation } from '@/components/TopNavigation';
-import { SyllabusView } from '@/components/SyllabusView';
 import { OverviewView } from '@/components/OverviewView';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/lib/auth';
+import { Button } from '@/components/ui/button';
+import { LogOut } from 'lucide-react';
+import { PersonaData } from '@/components/PersonaDialog';
 
 const Index = () => {
+  const { logout, user } = useAuth();
+  
   const {
     state,
     plan,
-    syllabus,
+    courseId,
     dayContents,
     completedDays,
     error,
-    generateFullCourse, 
-    generateCustomPlan, 
-    toggleModule,       
+    isEditMode,
+    editedModules,
+    generateSyllabus,
+    saveCourseEdits,
+    generateModuleContent,
+    updateFlashcardContent,
+    toggleModule,
+    startEditMode,
+    cancelEditMode,
+    updateModuleTitle,
+    updateSubtopicTitle,
     goToDay,
     goToOverview,
     startDay, 
@@ -32,43 +45,46 @@ const Index = () => {
     finishQuiz,
   } = useCourse();
 
+  const handleGenerateCourse = async (topic: string, persona?: PersonaData) => {
+    await generateSyllabus(topic, persona);
+  };
+
+  const handleStartModule = async (dayNumber: number, moduleTitle: string) => {
+    await generateModuleContent(moduleTitle, dayNumber);
+  };
+
   const showNavigation = plan && 
     state.step !== 'search' && 
     state.step !== 'loading-syllabus' && 
-    state.step !== 'syllabus' && 
     state.step !== 'loading-plan' && 
     state.step !== 'course-complete';
 
   const renderContent = () => {
     switch (state.step) {
       case 'search':
-        // Direct call to unified generation
-        return <SearchView onSubmit={generateFullCourse} />;
+        return <SearchView onSubmit={handleGenerateCourse} />;
 
       case 'loading-syllabus':
         return <LoadingView message="Designing your curriculum..." />;
 
-      case 'syllabus':
-        if (!syllabus) return null;
-        return (
-          <SyllabusView 
-            topic={syllabus.topic}
-            expertise={syllabus.expertise}
-            syllabus={syllabus.syllabus}
-            onContinue={generateCustomPlan} 
-            onBack={restartCourse}
-          />
-        );
-
-      case 'overview' :
+      case 'overview':
         if (!plan) return null;
         return (
           <OverviewView
             topic={plan.topic}
             modules={plan.modules}
-            totalDuration={plan.total_duration} // Pass duration for progress bar
+            totalDuration={plan.total_duration}
+            courseId={courseId || undefined}
+            isEditMode={isEditMode}
+            editedModules={editedModules}
             onDayClick={goToDay}
-            onToggleModule={toggleModule}       // Pass toggle function
+            onToggleModule={toggleModule}
+            onStartModule={handleStartModule}
+            onStartEditMode={startEditMode}
+            onCancelEditMode={cancelEditMode}
+            onSaveEdits={saveCourseEdits}
+            onUpdateModuleTitle={updateModuleTitle}
+            onUpdateSubtopicTitle={updateSubtopicTitle}
           />
         );
 
@@ -89,7 +105,7 @@ const Index = () => {
         );
 
       case 'loading-content':
-        return <LoadingView message={`Preparing Topic ${state.currentDay}...`} />;
+        return <LoadingView message={`Generating content for this module...`} />;
 
       case 'flashcards':
         const content = dayContents[state.currentDay];
@@ -104,8 +120,22 @@ const Index = () => {
             currentIndex={state.currentCard}
             dayNumber={state.currentDay}
             topic={currentTopicName}
+            moduleTitle={state.moduleTitle}
+            courseId={courseId || undefined}
             onNext={nextCard}
             onPrevious={previousCard}
+            onCardUpdate={(index, newContent, newAudioScript) => {
+              // Update local state and call API
+              const flashcard = content.flashcards[index];
+              if (flashcard && state.moduleTitle) {
+                updateFlashcardContent(
+                  state.moduleTitle,
+                  flashcard.title,
+                  newContent.split('\n\n'),
+                  newAudioScript || flashcard.audioScript || ''
+                );
+              }
+            }}
           />
         );
 
@@ -144,7 +174,7 @@ const Index = () => {
         );
 
       default:
-        return <SearchView onSubmit={generateFullCourse} />;
+        return <SearchView onSubmit={handleGenerateCourse} />;
     }
   };
 
@@ -153,6 +183,19 @@ const Index = () => {
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-gold/5 rounded-full blur-3xl" />
+      </div>
+
+      {/* Logout button - always visible */}
+      <div className="fixed top-4 right-4 z-50">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={logout}
+          className="gap-2 text-muted-foreground hover:text-foreground"
+        >
+          <LogOut className="w-4 h-4" />
+          <span className="hidden sm:inline">{user?.email || 'Logout'}</span>
+        </Button>
       </div>
 
       {showNavigation && plan && (

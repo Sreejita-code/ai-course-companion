@@ -30,9 +30,11 @@ interface FlashcardViewProps {
   currentIndex: number;
   dayNumber: number;
   topic?: string;
+  moduleTitle?: string;
+  courseId?: string;
   onNext: () => void;
   onPrevious: () => void;
-  onCardUpdate?: (index: number, newContent: string) => void;
+  onCardUpdate?: (index: number, newContent: string, newAudioScript?: string) => void;
 }
 
 type AnimationPhase = 'blank' | 'title-center' | 'title-moving' | 'content-reveal' | 'complete';
@@ -148,6 +150,8 @@ export function FlashcardView({
   currentIndex,
   dayNumber,
   topic = "General",
+  moduleTitle,
+  courseId,
   onNext,
   onPrevious,
   onCardUpdate
@@ -176,6 +180,7 @@ export function FlashcardView({
   // Edit State
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState("");
+  const [editAudioScript, setEditAudioScript] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -411,6 +416,7 @@ export function FlashcardView({
     let textVal = card.content;
     if (Array.isArray(textVal)) textVal = textVal.join('\n');
     setEditContent(textVal);
+    setEditAudioScript(card.audioScript || '');
     setIsEditing(true);
     if (isPlaying) stopAudio();
   };
@@ -418,22 +424,8 @@ export function FlashcardView({
   const saveEdit = async () => {
     setIsSaving(true);
     try {
-        // Updated Port to 8001
-        const response = await fetch('http://127.0.0.1:8001/update-card', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                topic: topic,
-                day_number: dayNumber,
-                card_index: currentIndex,
-                new_content: editContent
-            }),
-        });
-
-        if (!response.ok) throw new Error("Save failed");
-
         if (onCardUpdate) {
-            onCardUpdate(currentIndex, editContent);
+            onCardUpdate(currentIndex, editContent, editAudioScript);
         }
         
         setIsEditing(false);
@@ -465,14 +457,32 @@ export function FlashcardView({
   const renderContent = () => {
     if (isEditing) {
         return (
-            <div className="h-full flex flex-col gap-2">
-                <Textarea 
-                    value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
-                    className="flex-1 min-h-[150px] text-base leading-relaxed p-3 resize-none border-dashed border-2 border-indigo-200 focus:border-indigo-400"
-                    placeholder="Edit your flashcard content..."
-                />
-                <div className="flex justify-end gap-2">
+            <div className="h-full flex flex-col gap-4 overflow-y-auto">
+                <div className="flex-1 space-y-3">
+                    <div>
+                        <label className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1 block">
+                            Content Points
+                        </label>
+                        <Textarea 
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            className="min-h-[120px] text-base leading-relaxed p-3 resize-none border-dashed border-2 border-indigo-200 focus:border-indigo-400"
+                            placeholder="Edit your flashcard content..."
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1 block">
+                            Audio Script (Hidden from card)
+                        </label>
+                        <Textarea 
+                            value={editAudioScript}
+                            onChange={(e) => setEditAudioScript(e.target.value)}
+                            className="min-h-[80px] text-sm leading-relaxed p-3 resize-none border-dashed border-2 border-orange-200 focus:border-orange-400 bg-orange-50/30"
+                            placeholder="Script for audio narration..."
+                        />
+                    </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-2 border-t">
                     <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} disabled={isSaving}>
                         Cancel
                     </Button>
