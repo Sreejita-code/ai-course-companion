@@ -1,15 +1,45 @@
 import { useRef, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, BookOpen, ArrowLeft } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  BookOpen, 
+  ArrowLeft, 
+  RotateCcw, 
+  FileText, 
+  LayoutGrid,
+  Loader2,
+  CheckCircle2
+} from 'lucide-react';
 import { DaySchedule } from '@/types/course';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface TopNavigationProps {
   schedule: DaySchedule[];
-  currentDay?: number;
+  currentDay: number;
   completedDays: number[];
   onDayClick: (day: number) => void;
   onBack: () => void;
-  onHome: () => void;
+  courseTopic?: string;
   showOverview?: boolean;
   onOverviewClick?: () => void;
 }
@@ -20,38 +50,23 @@ export function TopNavigation({
   completedDays,
   onDayClick,
   onBack,
-  onHome,
   showOverview = true,
-  onOverviewClick
+  onOverviewClick,
 }: TopNavigationProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-
-  const checkScrollability = () => {
-    const container = scrollContainerRef.current;
-    if (container) {
-      setCanScrollLeft(container.scrollLeft > 0);
-      setCanScrollRight(
-        container.scrollLeft < container.scrollWidth - container.clientWidth - 10
-      );
-    }
-  };
+  
+  // --- Summary Dialog State ---
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryContent, setSummaryContent] = useState<string[]>([]);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+  const [activeSummaryTopic, setActiveSummaryTopic] = useState<string>("");
 
   useEffect(() => {
-    checkScrollability();
-    window.addEventListener('resize', checkScrollability);
-    return () => window.removeEventListener('resize', checkScrollability);
-  }, [schedule]);
-
-  useEffect(() => {
-    // Auto-scroll to current day
-    if (currentDay === undefined) return;
     const container = scrollContainerRef.current;
     if (container) {
-      const dayButton = container.querySelector(`[data-day="${currentDay}"]`);
-      if (dayButton) {
-        dayButton.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      const activeItem = container.querySelector(`[data-topic="${currentDay}"]`);
+      if (activeItem) {
+        activeItem.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
       }
     }
   }, [currentDay]);
@@ -59,7 +74,7 @@ export function TopNavigation({
   const scroll = (direction: 'left' | 'right') => {
     const container = scrollContainerRef.current;
     if (container) {
-      const scrollAmount = 200;
+      const scrollAmount = 300;
       container.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth'
@@ -67,142 +82,217 @@ export function TopNavigation({
     }
   };
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border"
-    >
-      <div className="max-w-6xl mx-auto px-4 py-3">
-        <div className="flex items-center gap-2 sm:gap-4">
-          {/* Home Arrow */}
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onHome}
-            className="p-2 rounded-full bg-card border border-border text-foreground hover:bg-accent hover:border-primary/50 transition-all"
-            title="Back to Search"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </motion.button>
+  const handleViewSummary = async (item: DaySchedule) => {
+    setSummaryOpen(true);
+    setActiveSummaryTopic(item.focus_topic);
+    
+    // Reset content and start loading
+    setSummaryContent([]);
+    setLoadingSummary(true);
 
-          {/* Logo */}
+    try {
+      const response = await fetch('http://127.0.0.1:8001/generate-day-summary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+              topic: item.focus_topic, 
+              day_number: item.day 
+          }),
+      });
+
+      if (response.ok) {
+          const data = await response.json();
+          setSummaryContent(data.summary_points || []);
+      } else {
+          setSummaryContent(["Unable to load summary at this time."]);
+      }
+    } catch (error) {
+      console.error(error);
+      setSummaryContent(["Error connecting to server."]);
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
+
+  const TopicButton = ({ item, isActive, isCompleted }: { item: DaySchedule, isActive: boolean, isCompleted: boolean }) => (
+    <TooltipProvider>
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onBack}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-accent transition-colors"
+            data-topic={item.day}
+            onClick={() => onDayClick(item.day)}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className={`
+              relative flex-shrink-0 flex flex-col items-start justify-center px-4 py-2
+              w-40 h-14 rounded-lg border transition-all snap-center text-left
+              ${isActive 
+                ? 'bg-amber-500 border-amber-500 text-white shadow-md' 
+                : isCompleted
+                  ? 'bg-green-50 border-green-200 text-green-900'
+                  : 'bg-white border-stone-200 text-stone-600 hover:border-amber-300 hover:bg-stone-50'
+              }
+            `}
           >
-            <BookOpen className="w-5 h-5 text-primary" />
-            <span className="font-display font-semibold text-foreground hidden sm:inline">
-              Learn<span className="text-gold-gradient">Book</span>
+            <div className="flex items-center gap-2 w-full">
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive ? 'text-amber-100' : 'text-stone-400'}`}>
+                {isActive ? 'Current Topic' : `Topic ${item.day}`}
+              </span>
+              {isCompleted && !isActive && (
+                <div className="w-2 h-2 bg-green-500 rounded-full ml-auto" />
+              )}
+            </div>
+            
+            <span className="text-sm font-semibold leading-tight w-full truncate">
+              {item.focus_topic}
             </span>
           </motion.button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-xs bg-stone-900 text-stone-50">
+          <p className="font-semibold">{item.focus_topic}</p>
+          <p className="text-xs text-stone-400">{item.summary}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 
-          {/* Overview Button */}
+  return (
+    <>
+      <div className="bg-white/80 backdrop-blur-md border-b border-stone-200/60 shadow-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4 h-16">
+          
+          {/* Left: Back & Logo */}
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={onBack}
+              className="p-2 hover:bg-stone-100 rounded-full transition-colors group"
+            >
+              <ArrowLeft className="w-5 h-5 text-stone-500 group-hover:text-stone-900" />
+            </button>
+            <div className="flex items-center gap-2 border-r border-stone-200 pr-4 h-8 select-none">
+              <BookOpen className="w-5 h-5 text-amber-500" />
+              <span className="font-display font-bold text-stone-800 hidden sm:inline">LearnBook</span>
+            </div>
+          </div>
+
+          {/* Middle: Overview */}
           {showOverview && onOverviewClick && (
-            <>
-              <div className="h-6 w-px bg-border" />
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+            <div className="hidden md:flex items-center mr-2 border-r border-stone-200 pr-4 h-8">
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={onOverviewClick}
-                className="px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                className="text-stone-600 hover:text-amber-600 hover:bg-amber-50 h-8 font-medium"
               >
+                <LayoutGrid className="w-4 h-4 mr-2" />
                 Overview
-              </motion.button>
-            </>
+              </Button>
+            </div>
           )}
 
-          {/* Separator */}
-          <div className="h-6 w-px bg-border" />
+          {/* Right: Topic Scroller */}
+          <div className="flex-1 flex items-center gap-2 min-w-0">
+            <button onClick={() => scroll('left')} className="p-1 text-stone-400 hover:text-stone-900">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
 
-          {/* Timeline Container */}
-          <div className="flex-1 flex items-center gap-2">
-            {/* Left Scroll Arrow */}
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => scroll('left')}
-              className={`p-2 rounded-full transition-all ${
-                canScrollLeft 
-                  ? 'bg-card border border-border text-foreground hover:bg-accent' 
-                  : 'text-muted-foreground/30 cursor-not-allowed'
-              }`}
-              disabled={!canScrollLeft}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </motion.button>
-
-            {/* Scrollable Days */}
-            <div
+            <div 
               ref={scrollContainerRef}
-              onScroll={checkScrollability}
-              className="flex-1 overflow-x-auto scrollbar-hide flex items-center gap-2 py-1"
+              className="flex-1 overflow-x-auto flex items-center gap-3 py-1 scrollbar-hide snap-x px-1"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              {schedule.map((day) => {
-                const isActive = currentDay !== undefined && day.day === currentDay;
-                const isCompleted = completedDays.includes(day.day);
+              {schedule.map((item) => {
+                const isActive = item.day === currentDay;
+                const isCompleted = completedDays.includes(item.day);
                 
+                if (isCompleted && !isActive) {
+                  return (
+                    <HoverCard key={item.day} openDelay={0} closeDelay={200}>
+                      <HoverCardTrigger asChild>
+                          <div>
+                          <TopicButton item={item} isActive={isActive} isCompleted={isCompleted} />
+                          </div>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-52 p-3 bg-white/95 backdrop-blur-sm border-stone-200 shadow-lg" sideOffset={5}>
+                        <div className="flex flex-col gap-2">
+                          <p className="text-xs font-semibold text-green-700 text-center flex items-center justify-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Completed
+                          </p>
+                          <div className="grid gap-1.5">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full justify-start h-8 text-xs font-medium hover:bg-amber-50 hover:text-amber-700 border-stone-200"
+                              onClick={() => onDayClick(item.day)}
+                            >
+                              <RotateCcw className="w-3.5 h-3.5 mr-2 text-stone-500" />
+                              Start Again
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full justify-start h-8 text-xs font-medium hover:bg-blue-50 hover:text-blue-700 border-stone-200"
+                              onClick={() => handleViewSummary(item)}
+                            >
+                              <FileText className="w-3.5 h-3.5 mr-2 text-stone-500" />
+                              Summary
+                            </Button>
+                          </div>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                  );
+                }
                 return (
-                  <motion.button
-                    key={day.day}
-                    data-day={day.day}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => onDayClick(day.day)}
-                    className={`
-                      relative flex-shrink-0 px-4 py-2.5 rounded-xl transition-all duration-300
-                      ${isActive 
-                        ? 'gold-gradient text-primary-foreground shadow-lg' 
-                        : isCompleted
-                          ? 'bg-primary/20 text-primary border border-primary/30'
-                          : 'bg-card border border-border text-foreground hover:border-primary/50'
-                      }
-                    `}
-                  >
-                    <div className="text-center min-w-[60px]">
-                      <div className={`text-xs font-medium ${isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                        Day
-                      </div>
-                      <div className="font-bold text-lg">{day.day}</div>
-                    </div>
-                    
-                    {/* Completed Checkmark */}
-                    {isCompleted && !isActive && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center"
-                      >
-                        <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </motion.div>
-                    )}
-                  </motion.button>
+                  <TopicButton key={item.day} item={item} isActive={isActive} isCompleted={isCompleted} />
                 );
               })}
             </div>
 
-            {/* Right Scroll Arrow */}
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => scroll('right')}
-              className={`p-2 rounded-full transition-all ${
-                canScrollRight 
-                  ? 'bg-card border border-border text-foreground hover:bg-accent' 
-                  : 'text-muted-foreground/30 cursor-not-allowed'
-              }`}
-              disabled={!canScrollRight}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </motion.button>
+            <button onClick={() => scroll('right')} className="p-1 text-stone-400 hover:text-stone-900">
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>
-    </motion.div>
+
+      {/* Summary Popup */}
+      <Dialog open={summaryOpen} onOpenChange={setSummaryOpen}>
+        <DialogContent className="sm:max-w-lg border-t-4 border-t-amber-500 shadow-2xl bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-display text-stone-900">
+              <div className="p-2 bg-amber-100 rounded-lg">
+                <FileText className="w-5 h-5 text-amber-600" />
+              </div>
+              {activeSummaryTopic}
+            </DialogTitle>
+            <DialogDescription>
+              Key takeaways from this topic.
+            </DialogDescription>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-[60vh] mt-4">
+            {loadingSummary ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                 <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+                 <p className="text-sm text-muted-foreground animate-pulse">Generating summary...</p>
+              </div>
+            ) : (
+              <ul className="space-y-3 px-1">
+                {summaryContent.map((point, i) => (
+                  <li key={i} className="flex gap-3 text-sm text-stone-700 leading-relaxed bg-stone-50 p-3 rounded-lg border border-stone-100">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold mt-0.5">
+                      {i + 1}
+                    </span>
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

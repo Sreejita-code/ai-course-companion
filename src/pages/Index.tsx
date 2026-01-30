@@ -1,65 +1,79 @@
 import { useCourse } from '@/hooks/useCourse';
 import { SearchView } from '@/components/SearchView';
 import { LoadingView } from '@/components/LoadingView';
-import { SyllabusView } from '@/components/SyllabusView';
-import { OverviewView } from '@/components/OverviewView';
 import { DayCoverView } from '@/components/DayCoverView';
 import { FlashcardView } from '@/components/FlashcardView';
+import { QuizView } from '@/components/QuizView'; 
 import { DayCompleteView } from '@/components/DayCompleteView';
 import { CourseCompleteView } from '@/components/CourseCompleteView';
 import { TopNavigation } from '@/components/TopNavigation';
+import { SyllabusView } from '@/components/SyllabusView';
+import { OverviewView } from '@/components/OverviewView';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Index = () => {
   const {
     state,
     plan,
+    syllabus,
     dayContents,
     completedDays,
     error,
-    isLoading,
-    generatePlan,
+    generateFullCourse, 
+    generateCustomPlan, 
+    toggleModule,       
     goToDay,
     goToOverview,
-    goToSyllabus,
-    startDay,
+    startDay, 
     nextCard,
     previousCard,
     proceedToNextDay,
     restartCourse,
+    finishQuiz,
   } = useCourse();
 
-  const showNavigation = plan && state.step !== 'search' && state.step !== 'loading-plan' && state.step !== 'syllabus' && state.step !== 'course-complete';
+  const showNavigation = plan && 
+    state.step !== 'search' && 
+    state.step !== 'loading-syllabus' && 
+    state.step !== 'syllabus' && 
+    state.step !== 'loading-plan' && 
+    state.step !== 'course-complete';
 
   const renderContent = () => {
     switch (state.step) {
       case 'search':
-        return <SearchView onSubmit={generatePlan} isLoading={isLoading} />;
+        // Direct call to unified generation
+        return <SearchView onSubmit={generateFullCourse} />;
 
-      case 'loading-plan':
-        return <SearchView onSubmit={generatePlan} isLoading={true} />;
+      case 'loading-syllabus':
+        return <LoadingView message="Designing your curriculum..." />;
 
       case 'syllabus':
-        if (!plan) return null;
+        if (!syllabus) return null;
         return (
-          <SyllabusView
-            topic={plan.topic}
-            expertise={plan.expertise || 'Beginner'}
-            syllabus={plan.syllabus || []}
-            onContinue={goToOverview}
+          <SyllabusView 
+            topic={syllabus.topic}
+            expertise={syllabus.expertise}
+            syllabus={syllabus.syllabus}
+            onContinue={generateCustomPlan} 
+            onBack={restartCourse}
           />
         );
 
-      case 'overview':
+      case 'overview' :
         if (!plan) return null;
         return (
           <OverviewView
             topic={plan.topic}
-            schedule={plan.schedule}
-            completedDays={completedDays}
+            modules={plan.modules}
+            totalDuration={plan.total_duration} // Pass duration for progress bar
             onDayClick={goToDay}
+            onToggleModule={toggleModule}       // Pass toggle function
           />
         );
+
+      case 'loading-plan':
+        return <LoadingView message="Building your personalized course..." />;
 
       case 'day-cover':
         if (!plan) return null;
@@ -75,18 +89,37 @@ const Index = () => {
         );
 
       case 'loading-content':
-        return <LoadingView message={`Preparing Day ${state.currentDay}...`} />;
+        return <LoadingView message={`Preparing Topic ${state.currentDay}...`} />;
 
       case 'flashcards':
         const content = dayContents[state.currentDay];
         if (!content) return null;
+        
+        const currentScheduleItem = plan?.schedule.find(d => d.day === state.currentDay);
+        const currentTopicName = currentScheduleItem?.focus_topic || "Current Topic";
+
         return (
           <FlashcardView
             flashcards={content.flashcards}
             currentIndex={state.currentCard}
             dayNumber={state.currentDay}
+            topic={currentTopicName}
             onNext={nextCard}
             onPrevious={previousCard}
+          />
+        );
+
+      case 'loading-quiz':
+        return <LoadingView message="Generating your knowledge check..." />;
+
+      case 'quiz':
+        if (state.step !== 'quiz' || !state.questions) return null;
+        return (
+          <QuizView 
+            questions={state.questions} 
+            onComplete={finishQuiz} 
+            onSkip={finishQuiz} 
+            onRestart={() => startDay(state.currentDay)} 
           />
         );
 
@@ -111,35 +144,38 @@ const Index = () => {
         );
 
       default:
-        return <SearchView onSubmit={generatePlan} isLoading={false} />;
+        return <SearchView onSubmit={generateFullCourse} />;
     }
   };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Background Pattern */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-gold/5 rounded-full blur-3xl" />
       </div>
 
-      {/* Top Navigation */}
       {showNavigation && plan && (
         <TopNavigation
           schedule={plan.schedule}
-          currentDay={state.step === 'flashcards' || state.step === 'day-cover' || state.step === 'loading-content' || state.step === 'day-complete' 
-            ? state.currentDay 
-            : undefined}
+          currentDay={
+            state.step === 'flashcards' || 
+            state.step === 'day-cover' || 
+            state.step === 'loading-content' || 
+            state.step === 'day-complete' ||
+            state.step === 'quiz' ||
+            state.step === 'loading-quiz'
+            ? state.currentDay
+            : -1
+          }
           completedDays={completedDays}
           onDayClick={goToDay}
-          onBack={goToOverview}
-          onHome={restartCourse}
+          onBack={state.step === 'overview' ? restartCourse : goToOverview}
           showOverview={state.step !== 'overview'}
           onOverviewClick={goToOverview}
         />
       )}
 
-      {/* Error Toast */}
       <AnimatePresence>
         {error && (
           <motion.div
@@ -153,10 +189,15 @@ const Index = () => {
         )}
       </AnimatePresence>
 
-      {/* Main Content */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={state.step + (state.step === 'flashcards' || state.step === 'day-cover' ? `-${state.currentDay}` : '')}
+          key={state.step + (
+            state.step === 'flashcards' || 
+            state.step === 'day-cover' || 
+            state.step === 'quiz' 
+            ? `-${state.currentDay}` 
+            : ''
+          )}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

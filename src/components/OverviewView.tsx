@@ -1,149 +1,314 @@
-import { motion } from 'framer-motion';
-import { BookOpen, Sparkles, Calendar, Check } from 'lucide-react';
-import { DaySchedule } from '@/types/course';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronDown, ChevronRight, Clock, PlayCircle, Eye, Trash2, Plus, CheckCircle } from 'lucide-react';
+import { CourseModule } from '@/types/course';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { TopNavigation } from './TopNavigation';
 
 interface OverviewViewProps {
   topic: string;
-  schedule: DaySchedule[];
-  completedDays: number[];
-  onDayClick: (dayNumber: number) => void;
+  modules?: CourseModule[];
+  totalDuration?: number;
+  onDayClick: (dayNumber: number, cardIndex?: number) => void;
+  onToggleModule?: (topicName: string) => void;
 }
 
-export function OverviewView({ topic, schedule, completedDays, onDayClick }: OverviewViewProps) {
-  // Calculate grid columns based on total days
-  const getGridCols = (totalDays: number) => {
-    if (totalDays <= 7) return 'grid-cols-7';
-    if (totalDays <= 14) return 'grid-cols-7';
-    if (totalDays <= 21) return 'grid-cols-7';
-    return 'grid-cols-7 sm:grid-cols-10';
+export function OverviewView({ topic, modules = [], totalDuration = 0, onDayClick, onToggleModule }: OverviewViewProps) {
+  const navigate = useNavigate();
+  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
+  const [showRemoved, setShowRemoved] = useState(false);
+
+  const toggleExpand = (topicName: string) => {
+    setExpandedTopics(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(topicName)) newSet.delete(topicName);
+      else newSet.add(topicName);
+      return newSet;
+    });
+  };
+
+  const handleToggleModule = (e: React.MouseEvent, topicName: string) => {
+      e.stopPropagation();
+      if (onToggleModule) onToggleModule(topicName);
+  };
+
+  // Logic to track the absolute index for Modules (Days)
+  let currentGlobalDay = 1;
+
+  const activeModules = modules.filter(m => m.tag === 'needed');
+  const removedModules = modules.filter(m => m.tag === 'not needed');
+  const displayedModules = showRemoved ? removedModules : activeModules;
+
+  // Duration Logic
+  const calculateModuleDuration = (m: CourseModule) => 
+    m.subtopics.reduce((acc, sub) => acc + sub.duration_minutes, 0);
+
+  const currentTotalDuration = activeModules.reduce((acc, m) => acc + calculateModuleDuration(m), 0);
+  const maxTotalDuration = modules.reduce((acc, m) => acc + calculateModuleDuration(m), 0);
+  
+  // Progress Calculation (Avoid division by zero)
+  const progressPercentage = maxTotalDuration > 0 ? (currentTotalDuration / maxTotalDuration) * 100 : 0;
+
+  // Circular Progress Constants
+  const radius = 28;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
+
+  const formatDuration = (mins: number) => {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      if (h > 0) return `${h}h ${m}m`;
+      return `${m}m`;
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center py-8 px-4">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="text-center mb-8 max-w-2xl"
-      >
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-          className="mb-4 inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 border border-primary/20"
-        >
-          <Calendar className="w-7 h-7 text-primary" />
-        </motion.div>
-        
-        <h1 className="font-display text-3xl md:text-4xl font-bold mb-2 text-foreground">
-          Your <span className="text-gold-gradient">{topic}</span> Journey
-        </h1>
-        <p className="text-base text-muted-foreground font-body">
-          {schedule.length} days of learning • Click any day to begin
-        </p>
-      </motion.div>
+    <div className="fixed inset-0 bg-stone-50 overflow-hidden flex flex-col">
+      <TopNavigation 
+        schedule={[]} 
+        currentDay={1}
+        completedDays={[]}
+        onDayClick={onDayClick}
+        onBack={() => navigate('/')}
+        courseTopic={topic}
+        showOverview={false}
+      />
 
-      {/* Calendar Grid */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.3, duration: 0.5 }}
-        className="w-full max-w-4xl"
-      >
-        <div className="bg-card rounded-2xl border border-border p-4 md:p-6 book-shadow">
-          {/* Week Headers */}
-          <div className="grid grid-cols-7 gap-2 mb-3">
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-              <div key={day} className="text-center text-xs font-medium text-muted-foreground py-1">
-                {day}
-              </div>
-            ))}
+      <div className="flex-1 overflow-y-auto p-6 md:p-10 max-w-5xl mx-auto w-full relative">
+        <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="font-display text-3xl font-bold text-stone-900 mb-2">
+                {showRemoved ? "Removed Topics" : "Your Custom Plan"}
+            </h1>
+            <p className="text-muted-foreground">
+              {showRemoved 
+                ? "Restore topics you previously removed." 
+                : `${activeModules.length} topics • ${formatDuration(currentTotalDuration)} total duration`
+              }
+            </p>
           </div>
 
-          {/* Day Cells */}
-          <div className="grid grid-cols-7 gap-2">
-            {schedule.map((day, index) => {
-              const isCompleted = completedDays.includes(day.day);
-              
-              return (
-                <motion.button
-                  key={day.day}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.4 + index * 0.02, duration: 0.3 }}
-                  whileHover={{ scale: 1.08, zIndex: 10 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => onDayClick(day.day)}
-                  className={`
-                    relative aspect-square rounded-xl p-2 flex flex-col items-center justify-center
-                    transition-all duration-200 group cursor-pointer
-                    ${isCompleted 
-                      ? 'gold-gradient text-primary-foreground shadow-md' 
-                      : 'bg-secondary/50 hover:bg-primary/10 border border-border hover:border-primary/50'
-                    }
-                  `}
-                  title={`Day ${day.day}: ${day.focus_topic}`}
-                >
-                  {/* Day Number */}
-                  <span className={`
-                    font-display font-bold text-lg md:text-xl
-                    ${isCompleted ? 'text-primary-foreground' : 'text-foreground'}
-                  `}>
-                    {day.day}
-                  </span>
+          <div className="flex items-center gap-4">
+            {/* Circular Progress Bar (Visible in Active View) */}
+            {!showRemoved && (
+                <div className="flex items-center gap-3 bg-white p-2 rounded-2xl border shadow-sm">
+                    <div className="relative w-16 h-16 flex items-center justify-center">
+                        {/* Background Circle */}
+                        <svg className="w-full h-full transform -rotate-90">
+                            <circle
+                                cx="32"
+                                cy="32"
+                                r={radius}
+                                stroke="currentColor"
+                                strokeWidth="5"
+                                fill="transparent"
+                                className="text-stone-100"
+                            />
+                            {/* Progress Circle */}
+                            <circle
+                                cx="32"
+                                cy="32"
+                                r={radius}
+                                stroke="currentColor"
+                                strokeWidth="5"
+                                fill="transparent"
+                                strokeDasharray={circumference}
+                                strokeDashoffset={strokeDashoffset}
+                                strokeLinecap="round"
+                                className="text-primary transition-all duration-500 ease-out"
+                            />
+                        </svg>
+                        {/* Center Text */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                            <span className="text-[10px] font-semibold text-stone-500 leading-none mb-0.5">Total</span>
+                            <span className="text-xs font-bold text-stone-800 leading-none">
+                                {formatDuration(currentTotalDuration)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-                  {/* Completed Check */}
-                  {isCompleted && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-background border-2 border-primary flex items-center justify-center"
+            <div className="flex gap-2">
+                {!showRemoved && removedModules.length > 0 && (
+                    <Button 
+                        variant="outline"
+                        onClick={() => setShowRemoved(true)}
+                        className="gap-2 text-stone-600"
                     >
-                      <Check className="w-3 h-3 text-primary" />
-                    </motion.div>
-                  )}
-
-                  {/* Hover Tooltip */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-popover border border-border rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-20 min-w-48 max-w-64">
-                    <p className="font-display font-semibold text-sm text-foreground mb-1 line-clamp-1">
-                      {day.focus_topic}
-                    </p>
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {day.summary}
-                    </p>
-                  </div>
-                </motion.button>
-              );
-            })}
-          </div>
-
-          {/* Legend */}
-          <div className="flex items-center justify-center gap-6 mt-6 pt-4 border-t border-border">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-secondary/50 border border-border" />
-              <span className="text-xs text-muted-foreground">Not Started</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded gold-gradient" />
-              <span className="text-xs text-muted-foreground">Completed</span>
+                        <Trash2 className="w-4 h-4" />
+                        <span className="hidden sm:inline">Removed ({removedModules.length})</span>
+                        <span className="sm:hidden">({removedModules.length})</span>
+                    </Button>
+                )}
+                {showRemoved && (
+                    <Button 
+                        variant="default"
+                        onClick={() => setShowRemoved(false)}
+                        className="gap-2 bg-stone-900 text-white hover:bg-stone-800"
+                    >
+                        <CheckCircle className="w-4 h-4" />
+                        Back to Plan
+                    </Button>
+                )}
             </div>
           </div>
         </div>
-      </motion.div>
 
-      {/* Progress Summary */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6, duration: 0.5 }}
-        className="mt-6 flex items-center gap-3"
-      >
-        <Sparkles className="w-4 h-4 text-primary" />
-        <p className="text-sm text-muted-foreground font-body">
-          <span className="font-semibold text-foreground">{completedDays.length}</span> of {schedule.length} days completed
-        </p>
-      </motion.div>
+        <div className="space-y-4 pb-20">
+          <AnimatePresence mode="popLayout">
+            {displayedModules.length === 0 && (
+                <motion.div 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    className="text-center py-12 text-stone-400"
+                >
+                    <p>{showRemoved ? "No removed topics." : "No topics needed? Add some back from the Removed list."}</p>
+                </motion.div>
+            )}
+
+            {displayedModules.map((module) => {
+            const isNotNeeded = module.tag === 'not needed';
+            const isExpanded = expandedTopics.has(module.topic);
+            const moduleDuration = module.subtopics.reduce((acc, sub) => acc + sub.duration_minutes, 0);
+            
+            // Capture the Day Number for this Module
+            const moduleDayNumber = currentGlobalDay;
+            if (!isNotNeeded) {
+                currentGlobalDay++; // Increment day counter for next needed module
+            }
+
+            // --- TRACKING CARD INDICES ---
+            let currentCardOffset = 0;
+
+            return (
+              <motion.div
+                key={module.topic}
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                className={`
+                   rounded-xl border transition-all duration-300 overflow-hidden
+                   ${isNotNeeded 
+                     ? 'bg-stone-100/50 border-stone-200' 
+                     : 'bg-white border-stone-200 shadow-sm hover:shadow-md'
+                   }
+                `}
+              >
+                <div 
+                   className="flex items-center justify-between p-5 cursor-pointer"
+                   onClick={() => !isNotNeeded && toggleExpand(module.topic)}
+                >
+                    <div className="flex items-center gap-4">
+                        <div className={`
+                           w-8 h-8 rounded-full flex items-center justify-center transition-colors
+                           ${isNotNeeded ? 'bg-stone-200 text-stone-400' : (isExpanded ? 'bg-primary/10 text-primary' : 'bg-stone-100 text-stone-400')}
+                        `}>
+                           {isNotNeeded ? <Trash2 className="w-4 h-4" /> : (isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />)}
+                        </div>
+                        
+                        <div>
+                            <h3 className={`font-display font-bold text-lg ${isNotNeeded ? 'text-stone-500 line-through decoration-stone-300' : 'text-stone-800'}`}>
+                                {module.topic}
+                            </h3>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                <span className="flex items-center gap-1">
+                                    <Clock className="w-3 h-3" /> {moduleDuration} min
+                                </span>
+                                <span>•</span>
+                                <span>{module.subtopics.length} lessons</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className={`
+                                gap-2 rounded-full 
+                                ${isNotNeeded ? 'text-green-600 hover:bg-green-50 hover:text-green-700' : 'text-stone-400 hover:text-red-500 hover:bg-red-50'}
+                            `}
+                            onClick={(e) => handleToggleModule(e, module.topic)}
+                        >
+                            {isNotNeeded ? <Plus className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
+                        </Button>
+
+                        {!isNotNeeded && (
+                            <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="gap-2 rounded-full border-primary/20 hover:bg-primary/5 hover:text-primary"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDayClick(moduleDayNumber, 0); // Start at beginning
+                                }}
+                            >
+                                <PlayCircle className="w-4 h-4" />
+                                Start
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
+                <AnimatePresence>
+                    {isExpanded && !isNotNeeded && (
+                        <motion.div
+                           initial={{ height: 0, opacity: 0 }}
+                           animate={{ height: 'auto', opacity: 1 }}
+                           exit={{ height: 0, opacity: 0 }}
+                           className="overflow-hidden"
+                        >
+                            <div className="px-5 pb-5 pt-0 pl-16 space-y-2">
+                                {module.subtopics.map((sub, idx) => {
+                                    // 1. Capture the start index for THIS subtopic
+                                    const startCardIndex = currentCardOffset;
+                                    
+                                    // 2. We now only have ONE card per subtopic
+                                    const subtopicCardCount = 1; 
+
+                                    // 3. Update offset for the NEXT subtopic loop
+                                    currentCardOffset += subtopicCardCount;
+
+                                    return (
+                                        <div 
+                                            key={idx} 
+                                            className="flex items-center justify-between p-3 rounded-lg bg-stone-50 border border-stone-100 hover:bg-stone-100/80 transition-colors"
+                                        >
+                                            <div>
+                                                <p className="font-medium text-sm text-stone-700">{sub.subtopic_name}</p>
+                                                <p className="text-xs text-muted-foreground mt-0.5">
+                                                    {sub.duration_minutes} min • {subtopicCardCount} card
+                                                </p>
+                                            </div>
+                                            
+                                            <Button 
+                                                size="icon" 
+                                                variant="ghost" 
+                                                className="h-8 w-8 text-stone-400 hover:text-primary"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    // Jump to specific card index
+                                                    onDayClick(moduleDayNumber, startCardIndex);
+                                                }}
+                                            >
+                                                <ChevronRight className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })}
+          </AnimatePresence>
+        </div>
+      </div>
     </div>
   );
 }

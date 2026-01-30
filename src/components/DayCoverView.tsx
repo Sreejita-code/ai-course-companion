@@ -10,8 +10,22 @@ interface DayCoverViewProps {
 }
 
 export function DayCoverView({ dayNumber, totalDays, dayInfo, onStart }: DayCoverViewProps) {
+  // Render summary with simple bold parsing
+  const renderSummary = () => {
+    return dayInfo.summary.split(' ').map((word, i) => {
+      const isBold = word.includes('**');
+      const cleanWord = word.replace(/\*\*/g, '');
+      return (
+        // UPDATED COLOR: Changed text-primary to text-amber-600
+        <span key={i} className={isBold ? "font-bold text-amber-600" : ""}>
+          {cleanWord}{' '}
+        </span>
+      );
+    });
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8">
+    <div className="h-full flex items-center justify-center px-4 py-8">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, rotateY: -10 }}
         animate={{ opacity: 1, scale: 1, rotateY: 0 }}
@@ -63,7 +77,7 @@ export function DayCoverView({ dayNumber, totalDays, dayInfo, onStart }: DayCove
               transition={{ delay: 0.6 }}
               className="text-center text-muted-foreground leading-relaxed mb-10 font-body text-lg"
             >
-              {dayInfo.summary}
+              {renderSummary()}
             </motion.p>
 
             {/* Book Icon */}
