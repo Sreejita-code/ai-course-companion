@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Sparkles, Sprout, Mountain, ShieldCheck, Loader2, XCircle } from 'lucide-react';
+import { BookOpen, Sparkles, Loader2, XCircle, Settings } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,23 +10,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from '@/components/ui/button';
+import { PersonaDialog, PersonaData } from './PersonaDialog';
 
 interface SearchViewProps {
-  onSubmit: (topic: string, expertise: string) => Promise<void>;
+  onSubmit: (topic: string, persona?: PersonaData) => Promise<void>;
 }
-
-const expertiseOptions = [
-  { label: 'Beginner', subtitle: 'New to this', icon: Sprout, level: 'Beginner' },
-  { label: 'Intermediate', subtitle: 'Some exp.', icon: ShieldCheck, level: 'Intermediate' },
-  { label: 'Expert', subtitle: 'Deep dive', icon: Mountain, level: 'Expert' },
-];
 
 export function SearchView({ onSubmit }: SearchViewProps) {
   const [query, setQuery] = useState('');
-  const [selectedExpertise, setSelectedExpertise] = useState<string | null>(null);
+  const [persona, setPersona] = useState<PersonaData>({});
+  const [personaDialogOpen, setPersonaDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  const hasPersona = Object.values(persona).some(v => v && v.trim());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,16 +36,10 @@ export function SearchView({ onSubmit }: SearchViewProps) {
       return;
     }
 
-    if (!selectedExpertise) {
-      setErrorMessage("Please select an expertise level.");
-      setShowErrorDialog(true);
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      await onSubmit(query.trim(), selectedExpertise);
+      await onSubmit(query.trim(), hasPersona ? persona : undefined);
     } catch (error: any) {
       console.error("Submission error:", error);
       let msg = "We couldn't process that request. Please try a different topic.";
@@ -112,57 +105,65 @@ export function SearchView({ onSubmit }: SearchViewProps) {
                 value={query}
                 disabled={isSubmitting}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="What do you want to learn?"
+                placeholder="What do you want to teach?"
                 className="w-full px-6 py-5 bg-transparent text-lg font-body placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
               />
             </div>
           </div>
 
-          <div className="mt-8 space-y-6">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7, duration: 0.5 }}
-              className="flex flex-col md:flex-row items-center justify-center gap-6"
+          {/* Persona Customization */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7, duration: 0.5 }}
+            className="mt-6 flex flex-col items-center gap-4"
+          >
+            <Button
+              type="button"
+              variant={hasPersona ? "default" : "outline"}
+              onClick={() => setPersonaDialogOpen(true)}
+              disabled={isSubmitting}
+              className={`
+                gap-2 rounded-xl transition-all
+                ${hasPersona 
+                  ? 'bg-primary/10 text-primary border-primary/30 hover:bg-primary/20' 
+                  : 'hover:border-primary/50'
+                }
+              `}
             >
-              <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium uppercase tracking-wider w-32 md:justify-end shrink-0">
-                <Sparkles className="w-3 h-3" />
-                <span>Expertise Level</span>
-              </div>
-              <div className="flex flex-wrap justify-center md:justify-start gap-3">
-                {expertiseOptions.map((option) => {
-                  const Icon = option.icon;
-                  const isSelected = selectedExpertise === option.level;
-                  return (
-                    <motion.button
-                      key={option.level}
-                      type="button"
-                      disabled={isSubmitting}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setSelectedExpertise(option.level)}
-                      className={`
-                        px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all duration-300 min-w-[120px]
-                        ${isSelected
-                          ? 'gold-gradient text-primary-foreground shadow-lg'
-                          : 'bg-card border border-border hover:border-primary/50 text-foreground'
-                        }
-                        ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}
-                      `}
-                    >
-                      <Icon className="w-4 h-4" />
-                      <div className="text-left">
-                        <div className="font-semibold text-sm">{option.label}</div>
-                        <div className={`text-xs ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                          {option.subtitle}
-                        </div>
-                      </div>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </div>
+              <Settings className="w-4 h-4" />
+              {hasPersona ? 'Persona Configured' : 'Customize Persona'}
+              {hasPersona && (
+                <span className="ml-1 px-2 py-0.5 bg-primary/20 rounded-full text-xs">
+                  Active
+                </span>
+              )}
+            </Button>
+
+            {hasPersona && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-wrap justify-center gap-2 text-xs"
+              >
+                {persona.target_audience && (
+                  <span className="px-3 py-1 bg-card border border-border rounded-full text-muted-foreground">
+                    👥 {persona.target_audience}
+                  </span>
+                )}
+                {persona.tone && (
+                  <span className="px-3 py-1 bg-card border border-border rounded-full text-muted-foreground capitalize">
+                    💬 {persona.tone}
+                  </span>
+                )}
+                {persona.learning_goal && (
+                  <span className="px-3 py-1 bg-card border border-border rounded-full text-muted-foreground">
+                    🎯 Goal set
+                  </span>
+                )}
+              </motion.div>
+            )}
+          </motion.div>
 
           <motion.button
             initial={{ opacity: 0, y: 20 }}
@@ -170,8 +171,6 @@ export function SearchView({ onSubmit }: SearchViewProps) {
             transition={{ delay: 0.9, duration: 0.5 }}
             type="submit"
             disabled={isSubmitting}
-            whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
-            whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
             className={`
                 mt-10 w-full max-w-sm mx-auto py-4 font-semibold text-lg rounded-xl flex items-center justify-center gap-3 shadow-lg transition-all
                 ${isSubmitting
@@ -183,18 +182,27 @@ export function SearchView({ onSubmit }: SearchViewProps) {
             {isSubmitting ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Analyzing Request...</span>
+                <span>Generating Syllabus...</span>
               </>
             ) : (
               <>
                 <Sparkles className="w-5 h-5" />
-                <span>Generate Syllabus</span>
+                <span>Generate Course</span>
               </>
             )}
           </motion.button>
         </motion.form>
       </motion.div>
 
+      {/* Persona Dialog */}
+      <PersonaDialog
+        open={personaDialogOpen}
+        onOpenChange={setPersonaDialogOpen}
+        persona={persona}
+        onSave={setPersona}
+      />
+
+      {/* Error Dialog */}
       <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
         <AlertDialogContent className="border-2 border-red-100 bg-white/95 backdrop-blur-xl shadow-2xl max-w-md rounded-2xl">
           <AlertDialogHeader className="items-center text-center">
