@@ -1,6 +1,22 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronRight, Clock, PlayCircle, Trash2, Plus, CheckCircle, Pencil, Save, X, Loader2 } from 'lucide-react';
+import { 
+  ChevronDown, 
+  ChevronRight, 
+  Clock, 
+  PlayCircle, 
+  Trash2, 
+  Plus, 
+  CheckCircle, 
+  Pencil, 
+  Save, 
+  X, 
+  Loader2, 
+  ArrowUp, 
+  ArrowDown,
+  Globe, // Added
+  Lock   // Added
+} from 'lucide-react';
 import { CourseModule, SyllabusModule } from '@/types/course';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -15,6 +31,7 @@ interface OverviewViewProps {
   courseId?: string;
   isEditMode?: boolean;
   editedModules?: SyllabusModule[];
+  isPublished?: boolean; // <--- NEW PROP
   onDayClick: (dayNumber: number, cardIndex?: number) => void;
   onToggleModule?: (topicName: string) => void;
   onStartModule?: (dayNumber: number, moduleTitle: string) => Promise<void>;
@@ -22,17 +39,24 @@ interface OverviewViewProps {
   onCancelEditMode?: () => void;
   onSaveEdits?: () => Promise<boolean | undefined>;
   onUpdateModuleTitle?: (oldTitle: string, newTitle: string) => void;
-  onUpdateSubtopicTitle?: (moduleTitle: string, oldSubtopic: string, newSubtopic: string) => void;
+  onUpdateSubtopicTitle?: (moduleTitle: string, subtopicIndex: number, newSubtopic: string) => void;
+  onDeleteSubtopic?: (moduleTitle: string, subtopicIndex: number) => void;
+  onAddSubtopic?: (moduleTitle: string) => void;
+  onReorderSubtopic?: (moduleTitle: string, index: number, direction: 'up' | 'down') => void;
+  onDeleteModule?: (moduleTitle: string) => void;
+  onAddModule?: () => void;
+  onTogglePublish?: () => Promise<boolean | undefined>; // <--- NEW PROP
 }
 
-export function OverviewView({ 
-  topic, 
-  modules = [], 
-  totalDuration = 0, 
+export function OverviewView({
+  topic,
+  modules = [],
+  totalDuration = 0,
   courseId,
   isEditMode = false,
   editedModules = [],
-  onDayClick, 
+  isPublished = false, // <--- Default false
+  onDayClick,
   onToggleModule,
   onStartModule,
   onStartEditMode,
@@ -40,15 +64,22 @@ export function OverviewView({
   onSaveEdits,
   onUpdateModuleTitle,
   onUpdateSubtopicTitle,
+  onDeleteSubtopic,
+  onAddSubtopic,
+  onReorderSubtopic,
+  onDeleteModule,
+  onAddModule,
+  onTogglePublish, // <--- Destructure
 }: OverviewViewProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
   const [showRemoved, setShowRemoved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false); // <--- State for publishing loader
   const [loadingModule, setLoadingModule] = useState<string | null>(null);
   const [editingModuleTitle, setEditingModuleTitle] = useState<string | null>(null);
-  const [editingSubtopic, setEditingSubtopic] = useState<{ module: string; subtopic: string } | null>(null);
+  const [editingSubtopic, setEditingSubtopic] = useState<{ module: string; subtopicIndex: number } | null>(null);
 
   const toggleExpand = (topicName: string) => {
     setExpandedTopics(prev => {
@@ -67,7 +98,7 @@ export function OverviewView({
   const handleStartModule = async (e: React.MouseEvent, dayNumber: number, moduleTitle: string) => {
     e.stopPropagation();
     if (!onStartModule) return;
-    
+
     setLoadingModule(moduleTitle);
     try {
       await onStartModule(dayNumber, moduleTitle);
@@ -78,7 +109,7 @@ export function OverviewView({
 
   const handleSaveEdits = async () => {
     if (!onSaveEdits) return;
-    
+
     setIsSaving(true);
     try {
       const success = await onSaveEdits();
@@ -92,6 +123,25 @@ export function OverviewView({
     }
   };
 
+  // NEW: Handle Publish Toggle
+  const handlePublishToggle = async () => {
+    if (!onTogglePublish) return;
+    setIsPublishing(true);
+    try {
+      const success = await onTogglePublish();
+      if (success) {
+        toast({ 
+          title: !isPublished ? "Published!" : "Unpublished", 
+          description: !isPublished 
+            ? "Your course is now visible to learners." 
+            : "Your course is now hidden from learners." 
+        });
+      }
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   // Logic to track the absolute index for Modules (Days)
   let currentGlobalDay = 1;
 
@@ -100,12 +150,12 @@ export function OverviewView({
   const displayedModules = showRemoved ? removedModules : activeModules;
 
   // Duration Logic
-  const calculateModuleDuration = (m: CourseModule) => 
+  const calculateModuleDuration = (m: CourseModule) =>
     m.subtopics.reduce((acc, sub) => acc + sub.duration_minutes, 0);
 
   const currentTotalDuration = activeModules.reduce((acc, m) => acc + calculateModuleDuration(m), 0);
   const maxTotalDuration = modules.reduce((acc, m) => acc + calculateModuleDuration(m), 0);
-  
+
   // Progress Calculation (Avoid division by zero)
   const progressPercentage = maxTotalDuration > 0 ? (currentTotalDuration / maxTotalDuration) * 100 : 0;
 
@@ -128,8 +178,8 @@ export function OverviewView({
 
   return (
     <div className="fixed inset-0 bg-stone-50 overflow-hidden flex flex-col">
-      <TopNavigation 
-        schedule={[]} 
+      <TopNavigation
+        schedule={[]}
         currentDay={1}
         completedDays={[]}
         onDayClick={onDayClick}
@@ -141,12 +191,21 @@ export function OverviewView({
       <div className="flex-1 overflow-y-auto p-6 md:p-10 max-w-5xl mx-auto w-full relative">
         <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold text-stone-900 mb-2">
-              {showRemoved ? "Removed Topics" : "Your Course Plan"}
-            </h1>
+            {/* UPDATED: Title with Status Badge */}
+            <div className="flex items-center gap-2 mb-2">
+              <h1 className="font-display text-3xl font-bold text-stone-900">
+                {showRemoved ? "Removed Topics" : "Your Course Plan"}
+              </h1>
+              {!showRemoved && (
+                <span className={`text-xs px-2 py-1 rounded-full border ${isPublished ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'}`}>
+                  {isPublished ? 'Published' : 'Draft'}
+                </span>
+              )}
+            </div>
+            
             <p className="text-muted-foreground">
-              {showRemoved 
-                ? "Restore topics you previously removed." 
+              {showRemoved
+                ? "Restore topics you previously removed."
                 : `${activeModules.length} modules • ${formatDuration(currentTotalDuration)} total duration`
               }
             </p>
@@ -157,47 +216,41 @@ export function OverviewView({
             {!showRemoved && !isEditMode && (
               <div className="flex items-center gap-3 bg-white p-2 rounded-2xl border shadow-sm">
                 <div className="relative w-16 h-16 flex items-center justify-center">
-                  {/* Background Circle */}
                   <svg className="w-full h-full transform -rotate-90">
-                    <circle
-                      cx="32"
-                      cy="32"
-                      r={radius}
-                      stroke="currentColor"
-                      strokeWidth="5"
-                      fill="transparent"
-                      className="text-stone-100"
-                    />
-                    {/* Progress Circle */}
-                    <circle
-                      cx="32"
-                      cy="32"
-                      r={radius}
-                      stroke="currentColor"
-                      strokeWidth="5"
-                      fill="transparent"
-                      strokeDasharray={circumference}
-                      strokeDashoffset={strokeDashoffset}
-                      strokeLinecap="round"
-                      className="text-primary transition-all duration-500 ease-out"
-                    />
+                    <circle cx="32" cy="32" r={radius} stroke="currentColor" strokeWidth="5" fill="transparent" className="text-stone-100" />
+                    <circle cx="32" cy="32" r={radius} stroke="currentColor" strokeWidth="5" fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" className="text-primary transition-all duration-500 ease-out" />
                   </svg>
-                  {/* Center Text */}
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                     <span className="text-[10px] font-semibold text-stone-500 leading-none mb-0.5">Total</span>
-                    <span className="text-xs font-bold text-stone-800 leading-none">
-                      {formatDuration(currentTotalDuration)}
-                    </span>
+                    <span className="text-xs font-bold text-stone-800 leading-none">{formatDuration(currentTotalDuration)}</span>
                   </div>
                 </div>
               </div>
             )}
 
             <div className="flex gap-2">
+              
+              {/* NEW: Publish Button */}
+              {!isEditMode && !showRemoved && onTogglePublish && (
+                 <Button
+                  variant={isPublished ? "outline" : "default"}
+                  onClick={handlePublishToggle}
+                  disabled={isPublishing}
+                  className={`gap-2 ${!isPublished ? "bg-stone-900 text-white hover:bg-stone-800" : ""}`}
+                >
+                  {isPublishing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    isPublished ? <Lock className="w-4 h-4" /> : <Globe className="w-4 h-4" />
+                  )}
+                  {isPublished ? "Unpublish" : "Publish Course"}
+                </Button>
+              )}
+
               {/* Edit Mode Controls */}
               {isEditMode ? (
                 <>
-                  <Button 
+                  <Button
                     variant="outline"
                     onClick={onCancelEditMode}
                     disabled={isSaving}
@@ -206,7 +259,7 @@ export function OverviewView({
                     <X className="w-4 h-4" />
                     Cancel
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleSaveEdits}
                     disabled={isSaving}
                     className="gap-2 gold-gradient text-primary-foreground"
@@ -218,7 +271,7 @@ export function OverviewView({
               ) : (
                 <>
                   {!showRemoved && onStartEditMode && (
-                    <Button 
+                    <Button
                       variant="outline"
                       onClick={onStartEditMode}
                       className="gap-2"
@@ -227,9 +280,9 @@ export function OverviewView({
                       Edit Mode
                     </Button>
                   )}
-                  
+
                   {!showRemoved && removedModules.length > 0 && (
-                    <Button 
+                    <Button
                       variant="outline"
                       onClick={() => setShowRemoved(true)}
                       className="gap-2 text-stone-600"
@@ -240,7 +293,7 @@ export function OverviewView({
                     </Button>
                   )}
                   {showRemoved && (
-                    <Button 
+                    <Button
                       variant="default"
                       onClick={() => setShowRemoved(false)}
                       className="gap-2 bg-stone-900 text-white hover:bg-stone-800"
@@ -255,12 +308,13 @@ export function OverviewView({
           </div>
         </div>
 
+        {/* Existing Content */}
         <div className="space-y-4 pb-20">
           <AnimatePresence mode="popLayout">
             {displayedModules.length === 0 && (
-              <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 className="text-center py-12 text-stone-400"
               >
                 <p>{showRemoved ? "No removed topics." : "No topics needed? Add some back from the Removed list."}</p>
@@ -272,17 +326,20 @@ export function OverviewView({
               const isExpanded = expandedTopics.has(module.topic);
               const moduleDuration = module.subtopics.reduce((acc, sub) => acc + sub.duration_minutes, 0);
               const isLoading = loadingModule === module.topic;
-              
-              // Capture the Day Number for this Module
+
               const moduleDayNumber = currentGlobalDay;
               if (!isNotNeeded) {
-                currentGlobalDay++; // Increment day counter for next needed module
+                currentGlobalDay++; 
               }
 
-              // Get edited data for this module
               const editedData = getEditedModule(module.topic);
+              const currentSubtopics = (isEditMode && editedData)
+                ? editedData.subtopics.map(s => {
+                  const orig = module.subtopics.find(os => os.subtopic_name === s);
+                  return { subtopic_name: s, duration_minutes: orig?.duration_minutes || 0 };
+                })
+                : module.subtopics;
 
-              // --- TRACKING CARD INDICES ---
               let currentCardOffset = 0;
 
               return (
@@ -295,24 +352,24 @@ export function OverviewView({
                   transition={{ duration: 0.2 }}
                   className={`
                      rounded-xl border transition-all duration-300 overflow-hidden
-                     ${isNotNeeded 
-                       ? 'bg-stone-100/50 border-stone-200' 
-                       : 'bg-white border-stone-200 shadow-sm hover:shadow-md'
-                     }
+                     ${isNotNeeded
+                      ? 'bg-stone-100/50 border-stone-200'
+                      : 'bg-white border-stone-200 shadow-sm hover:shadow-md'
+                    }
                   `}
                 >
-                  <div 
-                     className="flex items-center justify-between p-5 cursor-pointer"
-                     onClick={() => !isNotNeeded && !isEditMode && toggleExpand(module.topic)}
+                  <div
+                    className="flex items-center justify-between p-5 cursor-pointer"
+                    onClick={() => !isNotNeeded && !isEditMode && toggleExpand(module.topic)}
                   >
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       <div className={`
                          w-8 h-8 rounded-full flex items-center justify-center transition-colors flex-shrink-0
                          ${isNotNeeded ? 'bg-stone-200 text-stone-400' : (isExpanded ? 'bg-primary/10 text-primary' : 'bg-stone-100 text-stone-400')}
                       `}>
-                         {isNotNeeded ? <Trash2 className="w-4 h-4" /> : (isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />)}
+                        {isNotNeeded ? <Trash2 className="w-4 h-4" /> : (isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />)}
                       </div>
-                      
+
                       <div className="flex-1 min-w-0">
                         {isEditMode && editingModuleTitle === module.topic ? (
                           <Input
@@ -336,7 +393,7 @@ export function OverviewView({
                             onClick={(e) => e.stopPropagation()}
                           />
                         ) : (
-                          <h3 
+                          <h3
                             className={`font-display font-bold text-lg truncate ${isNotNeeded ? 'text-stone-500 line-through decoration-stone-300' : 'text-stone-800'} ${isEditMode ? 'cursor-text hover:bg-stone-100 px-2 py-1 rounded -ml-2' : ''}`}
                             onClick={(e) => {
                               if (isEditMode) {
@@ -353,13 +410,28 @@ export function OverviewView({
                             <Clock className="w-3 h-3" /> {moduleDuration} min
                           </span>
                           <span>•</span>
-                          <span>{module.subtopics.length} lessons</span>
+                          <span>{currentSubtopics.length} lessons</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      {!isEditMode && (
+                      {isEditMode ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="gap-2 rounded-full text-stone-400 hover:text-red-500 hover:bg-red-50"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onDeleteModule) {
+                              onDeleteModule(module.topic);
+                            }
+                          }}
+                          title="Delete Module"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      ) : (
                         <>
                           <Button
                             size="sm"
@@ -374,8 +446,8 @@ export function OverviewView({
                           </Button>
 
                           {!isNotNeeded && (
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               variant="outline"
                               disabled={isLoading}
                               className="gap-2 rounded-full border-primary/20 hover:bg-primary/5 hover:text-primary"
@@ -397,41 +469,35 @@ export function OverviewView({
                   <AnimatePresence>
                     {(isExpanded || isEditMode) && !isNotNeeded && (
                       <motion.div
-                         initial={{ height: 0, opacity: 0 }}
-                         animate={{ height: 'auto', opacity: 1 }}
-                         exit={{ height: 0, opacity: 0 }}
-                         className="overflow-hidden"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
                       >
                         <div className="px-5 pb-5 pt-0 pl-16 space-y-2">
-                          {module.subtopics.map((sub, idx) => {
-                            // 1. Capture the start index for THIS subtopic
+                          {currentSubtopics.map((sub, idx) => {
                             const startCardIndex = currentCardOffset;
-                            
-                            // 2. We now only have ONE card per subtopic
-                            const subtopicCardCount = 1; 
-
-                            // 3. Update offset for the NEXT subtopic loop
+                            const subtopicCardCount = 1;
                             currentCardOffset += subtopicCardCount;
-
-                            const isEditingThis = editingSubtopic?.module === module.topic && editingSubtopic?.subtopic === sub.subtopic_name;
+                            const isEditingThis = editingSubtopic?.module === module.topic && editingSubtopic?.subtopicIndex === idx;
 
                             return (
-                              <div 
-                                key={idx} 
+                              <div
+                                key={idx}
                                 className="flex items-center justify-between p-3 rounded-lg bg-stone-50 border border-stone-100 hover:bg-stone-100/80 transition-colors"
                               >
                                 <div className="flex-1 min-w-0">
                                   {isEditMode && isEditingThis ? (
                                     <Input
-                                      defaultValue={sub.subtopic_name}
+                                      value={sub.subtopic_name}
                                       className="font-medium text-sm h-7"
                                       autoFocus
-                                      onBlur={(e) => {
-                                        if (onUpdateSubtopicTitle && e.target.value !== sub.subtopic_name) {
-                                          onUpdateSubtopicTitle(module.topic, sub.subtopic_name, e.target.value);
+                                      onChange={(e) => {
+                                        if (onUpdateSubtopicTitle) {
+                                          onUpdateSubtopicTitle(module.topic, idx, e.target.value);
                                         }
-                                        setEditingSubtopic(null);
                                       }}
+                                      onBlur={() => setEditingSubtopic(null)}
                                       onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
                                           (e.target as HTMLInputElement).blur();
@@ -443,11 +509,11 @@ export function OverviewView({
                                     />
                                   ) : (
                                     <>
-                                      <p 
+                                      <p
                                         className={`font-medium text-sm text-stone-700 truncate ${isEditMode ? 'cursor-text hover:bg-white px-2 py-1 rounded -ml-2' : ''}`}
                                         onClick={() => {
                                           if (isEditMode) {
-                                            setEditingSubtopic({ module: module.topic, subtopic: sub.subtopic_name });
+                                            setEditingSubtopic({ module: module.topic, subtopicIndex: idx });
                                           }
                                         }}
                                       >
@@ -459,15 +525,57 @@ export function OverviewView({
                                     </>
                                   )}
                                 </div>
-                                
-                                {!isEditMode && (
-                                  <Button 
-                                    size="icon" 
-                                    variant="ghost" 
+
+                                {isEditMode ? (
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8 text-stone-400 hover:text-red-500 flex-shrink-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (onDeleteSubtopic) {
+                                          onDeleteSubtopic(module.topic, idx);
+                                        }
+                                      }}
+                                      title="Delete Subtopic"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                    <div className="flex flex-col gap-0.5">
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-4 w-6 text-stone-400 hover:text-stone-600 disabled:opacity-30"
+                                        disabled={idx === 0}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (onReorderSubtopic) onReorderSubtopic(module.topic, idx, 'up');
+                                        }}
+                                      >
+                                        <ArrowUp className="w-3 h-3" />
+                                      </Button>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-4 w-6 text-stone-400 hover:text-stone-600 disabled:opacity-30"
+                                        disabled={idx === currentSubtopics.length - 1}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (onReorderSubtopic) onReorderSubtopic(module.topic, idx, 'down');
+                                        }}
+                                      >
+                                        <ArrowDown className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
                                     className="h-8 w-8 text-stone-400 hover:text-primary flex-shrink-0"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      // Jump to specific card index
                                       onDayClick(moduleDayNumber, startCardIndex);
                                     }}
                                   >
@@ -477,6 +585,20 @@ export function OverviewView({
                               </div>
                             );
                           })}
+
+                          {isEditMode && onAddSubtopic && (
+                            <div className="mt-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full gap-2 text-primary border-dashed"
+                                onClick={() => onAddSubtopic(module.topic)}
+                              >
+                                <Plus className="w-4 h-4" />
+                                Add Subtopic
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </motion.div>
                     )}
@@ -485,6 +607,24 @@ export function OverviewView({
               );
             })}
           </AnimatePresence>
+
+          {isEditMode && onAddModule && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6"
+            >
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full max-w-md mx-auto flex gap-2 border-dashed border-2 border-primary/30 text-primary hover:bg-primary/5"
+                onClick={onAddModule}
+              >
+                <Plus className="w-5 h-5" />
+                Add New Module
+              </Button>
+            </motion.div>
+          )}
         </div>
       </div>
     </div>

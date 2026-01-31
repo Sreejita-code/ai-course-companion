@@ -51,7 +51,7 @@ const KeywordPopover = ({ word, context }: { word: string, context: string }) =>
       setLoading(true);
       try {
         // Ensure this matches your backend port (8001)
-        const response = await fetch('http://127.0.0.1:8001/explain-term', {
+        const response = await fetch('http://127.0.0.1:8000/explain-term', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ term: word, context: context }),
@@ -237,7 +237,7 @@ export function FlashcardView({
       
       if (targetCard.audioScript) {
           // --- UPDATED CODE START ---
-          response = await fetch('http://127.0.0.1:8001/generate-audio', {
+          response = await fetch('http://127.0.0.1:8000/generate-audio', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -248,7 +248,7 @@ export function FlashcardView({
           // --- UPDATED CODE END ---
       } else {
           // Fallback logic remains same
-          response = await fetch('http://127.0.0.1:8001/generate-detailed-audio', {
+          response = await fetch('http://127.0.0.1:8000/generate-detailed-audio', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -343,7 +343,7 @@ export function FlashcardView({
     try {
       setIsLoadingSimplify(true);
       // Updated Port to 8001
-      const response = await fetch('http://127.0.0.1:8001/simplify-content', {
+      const response = await fetch('http://127.0.0.1:8000/simplify-content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: card.content }),
@@ -381,7 +381,7 @@ export function FlashcardView({
     setIsDownloading(true);
     try {
         // Updated Port to 8001
-        const response = await fetch('http://127.0.0.1:8001/generate-pdf', {
+        const response = await fetch('http://127.0.0.1:8000/generate-pdf', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
