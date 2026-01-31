@@ -15,10 +15,9 @@ import { PersonaDialog, PersonaData } from './PersonaDialog';
 
 interface SearchViewProps {
   onSubmit: (topic: string, persona?: PersonaData) => Promise<void>;
-  isLearnerMode?: boolean;
 }
 
-export function SearchView({ onSubmit, isLearnerMode = false }: SearchViewProps) {
+export function SearchView({ onSubmit }: SearchViewProps) {
   const [query, setQuery] = useState('');
   const [persona, setPersona] = useState<PersonaData>({});
   const [personaDialogOpen, setPersonaDialogOpen] = useState(false);
@@ -88,10 +87,7 @@ export function SearchView({ onSubmit, isLearnerMode = false }: SearchViewProps)
           transition={{ delay: 0.4, duration: 0.6 }}
           className="text-lg text-muted-foreground mb-10 font-body"
         >
-          {isLearnerMode 
-            ? "Enter a topic to find courses or create your personalized learning journey"
-            : "Transform any topic into an interactive learning journey"
-          }
+          Transform any topic into an interactive learning journey
         </motion.p>
 
         <motion.form
@@ -109,67 +105,65 @@ export function SearchView({ onSubmit, isLearnerMode = false }: SearchViewProps)
                 value={query}
                 disabled={isSubmitting}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder={isLearnerMode ? "What do you want to learn?" : "What do you want to teach?"}
+                placeholder="What do you want to teach?"
                 className="w-full px-6 py-5 bg-transparent text-lg font-body placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
               />
             </div>
           </div>
 
-          {/* Persona Customization - Only for Creator Mode */}
-          {!isLearnerMode && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7, duration: 0.5 }}
-              className="mt-6 flex flex-col items-center gap-4"
+          {/* Persona Customization */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7, duration: 0.5 }}
+            className="mt-6 flex flex-col items-center gap-4"
+          >
+            <Button
+              type="button"
+              variant={hasPersona ? "default" : "outline"}
+              onClick={() => setPersonaDialogOpen(true)}
+              disabled={isSubmitting}
+              className={`
+                gap-2 rounded-xl transition-all
+                ${hasPersona 
+                  ? 'bg-primary/10 text-primary border-primary/30 hover:bg-primary/20' 
+                  : 'hover:border-primary/50'
+                }
+              `}
             >
-              <Button
-                type="button"
-                variant={hasPersona ? "default" : "outline"}
-                onClick={() => setPersonaDialogOpen(true)}
-                disabled={isSubmitting}
-                className={`
-                  gap-2 rounded-xl transition-all
-                  ${hasPersona 
-                    ? 'bg-primary/10 text-primary border-primary/30 hover:bg-primary/20' 
-                    : 'hover:border-primary/50'
-                  }
-                `}
+              <Settings className="w-4 h-4" />
+              {hasPersona ? 'Persona Configured' : 'Customize Persona'}
+              {hasPersona && (
+                <span className="ml-1 px-2 py-0.5 bg-primary/20 rounded-full text-xs">
+                  Active
+                </span>
+              )}
+            </Button>
+
+            {hasPersona && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-wrap justify-center gap-2 text-xs"
               >
-                <Settings className="w-4 h-4" />
-                {hasPersona ? 'Persona Configured' : 'Customize Persona'}
-                {hasPersona && (
-                  <span className="ml-1 px-2 py-0.5 bg-primary/20 rounded-full text-xs">
-                    Active
+                {persona.target_audience && (
+                  <span className="px-3 py-1 bg-card border border-border rounded-full text-muted-foreground">
+                    👥 {persona.target_audience}
                   </span>
                 )}
-              </Button>
-
-              {hasPersona && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex flex-wrap justify-center gap-2 text-xs"
-                >
-                  {persona.target_audience && (
-                    <span className="px-3 py-1 bg-card border border-border rounded-full text-muted-foreground">
-                      👥 {persona.target_audience}
-                    </span>
-                  )}
-                  {persona.tone && (
-                    <span className="px-3 py-1 bg-card border border-border rounded-full text-muted-foreground capitalize">
-                      💬 {persona.tone}
-                    </span>
-                  )}
-                  {persona.learning_goal && (
-                    <span className="px-3 py-1 bg-card border border-border rounded-full text-muted-foreground">
-                      🎯 Goal set
-                    </span>
-                  )}
-                </motion.div>
-              )}
-            </motion.div>
-          )}
+                {persona.tone && (
+                  <span className="px-3 py-1 bg-card border border-border rounded-full text-muted-foreground capitalize">
+                    💬 {persona.tone}
+                  </span>
+                )}
+                {persona.learning_goal && (
+                  <span className="px-3 py-1 bg-card border border-border rounded-full text-muted-foreground">
+                    🎯 Goal set
+                  </span>
+                )}
+              </motion.div>
+            )}
+          </motion.div>
 
           <motion.button
             initial={{ opacity: 0, y: 20 }}
@@ -188,12 +182,12 @@ export function SearchView({ onSubmit, isLearnerMode = false }: SearchViewProps)
             {isSubmitting ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span>{isLearnerMode ? 'Searching...' : 'Generating Syllabus...'}</span>
+                <span>Generating Syllabus...</span>
               </>
             ) : (
               <>
                 <Sparkles className="w-5 h-5" />
-                <span>{isLearnerMode ? 'Find Courses' : 'Generate Course'}</span>
+                <span>Generate Course</span>
               </>
             )}
           </motion.button>

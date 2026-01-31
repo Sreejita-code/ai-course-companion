@@ -47,7 +47,6 @@ export interface CoursePlan {
   modules?: CourseModule[];
   total_duration?: number;
   course_id?: string; // Backend course ID for API calls
-  isPublished?: boolean; // <--- ADDED THIS
 }
 
 // Flashcard for display

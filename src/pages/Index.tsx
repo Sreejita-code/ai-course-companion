@@ -3,7 +3,7 @@ import { SearchView } from '@/components/SearchView';
 import { LoadingView } from '@/components/LoadingView';
 import { DayCoverView } from '@/components/DayCoverView';
 import { FlashcardView } from '@/components/FlashcardView';
-import { QuizView } from '@/components/QuizView';
+import { QuizView } from '@/components/QuizView'; 
 import { DayCompleteView } from '@/components/DayCompleteView';
 import { CourseCompleteView } from '@/components/CourseCompleteView';
 import { TopNavigation } from '@/components/TopNavigation';
@@ -16,7 +16,7 @@ import { PersonaData } from '@/components/PersonaDialog';
 
 const Index = () => {
   const { logout, user } = useAuth();
-
+  
   const {
     state,
     plan,
@@ -26,7 +26,6 @@ const Index = () => {
     error,
     isEditMode,
     editedModules,
-    isPublished, // <--- 1. Destructure isPublished state
     generateSyllabus,
     saveCourseEdits,
     generateModuleContent,
@@ -36,15 +35,9 @@ const Index = () => {
     cancelEditMode,
     updateModuleTitle,
     updateSubtopicTitle,
-    deleteSubtopic,
-    addSubtopic,
-    reorderSubtopic,
-    deleteModule,
-    addModule,
-    togglePublish, // <--- 2. Destructure togglePublish action
     goToDay,
     goToOverview,
-    startDay,
+    startDay, 
     nextCard,
     previousCard,
     proceedToNextDay,
@@ -77,14 +70,13 @@ const Index = () => {
       case 'overview':
         if (!plan) return null;
         return (
-          <OverviewView 
+          <OverviewView
             topic={plan.topic}
             modules={plan.modules}
             totalDuration={plan.total_duration}
             courseId={courseId || undefined}
             isEditMode={isEditMode}
             editedModules={editedModules}
-            isPublished={isPublished} // <--- 3. Pass isPublished prop
             onDayClick={goToDay}
             onToggleModule={toggleModule}
             onStartModule={handleStartModule}
@@ -93,12 +85,6 @@ const Index = () => {
             onSaveEdits={saveCourseEdits}
             onUpdateModuleTitle={updateModuleTitle}
             onUpdateSubtopicTitle={updateSubtopicTitle}
-            onDeleteSubtopic={deleteSubtopic}
-            onAddSubtopic={addSubtopic}
-            onReorderSubtopic={reorderSubtopic}
-            onDeleteModule={deleteModule}
-            onAddModule={addModule}
-            onTogglePublish={togglePublish} // <--- 4. Pass togglePublish callback
           />
         );
 
@@ -110,11 +96,11 @@ const Index = () => {
         const dayInfo = plan.schedule.find((d) => d.day === state.currentDay);
         if (!dayInfo) return null;
         return (
-          <DayCoverView 
-            dayNumber={state.currentDay} 
+          <DayCoverView
+            dayNumber={state.currentDay}
             totalDays={plan.total_days}
             dayInfo={dayInfo}
-            onStart={() => startDay(state.currentDay)} 
+            onStart={() => startDay(state.currentDay)}
           />
         );
 
@@ -129,7 +115,7 @@ const Index = () => {
         const currentTopicName = currentScheduleItem?.focus_topic || "Current Topic";
 
         return (
-          <FlashcardView 
+          <FlashcardView
             flashcards={content.flashcards}
             currentIndex={state.currentCard}
             dayNumber={state.currentDay}
@@ -143,9 +129,9 @@ const Index = () => {
               const flashcard = content.flashcards[index];
               if (flashcard && state.moduleTitle) {
                 updateFlashcardContent(
-                  state.moduleTitle, 
-                  flashcard.title, 
-                  newContent.split('\n\n'), 
+                  state.moduleTitle,
+                  flashcard.title,
+                  newContent.split('\n\n'),
                   newAudioScript || flashcard.audioScript || ''
                 );
               }
@@ -160,30 +146,30 @@ const Index = () => {
         if (state.step !== 'quiz' || !state.questions) return null;
         return (
           <QuizView 
-            questions={state.questions}
-            onComplete={finishQuiz}
-            onSkip={finishQuiz}
-            onRestart={() => startDay(state.currentDay)}
+            questions={state.questions} 
+            onComplete={finishQuiz} 
+            onSkip={finishQuiz} 
+            onRestart={() => startDay(state.currentDay)} 
           />
         );
 
       case 'day-complete':
         if (!plan) return null;
         return (
-          <DayCompleteView 
-            dayNumber={state.currentDay} 
-            totalDays={plan.total_days} 
-            onProceed={proceedToNextDay} 
+          <DayCompleteView
+            dayNumber={state.currentDay}
+            totalDays={plan.total_days}
+            onProceed={proceedToNextDay}
           />
         );
 
       case 'course-complete':
         if (!plan) return null;
         return (
-          <CourseCompleteView 
-            topic={plan.topic} 
-            totalDays={plan.total_days} 
-            onRestart={restartCourse} 
+          <CourseCompleteView
+            topic={plan.topic}
+            totalDays={plan.total_days}
+            onRestart={restartCourse}
           />
         );
 
@@ -201,22 +187,20 @@ const Index = () => {
 
       {/* Logout button - always visible */}
       <div className="fixed top-4 right-4 z-50">
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={logout}
           className="gap-2 text-muted-foreground hover:text-foreground"
         >
           <LogOut className="w-4 h-4" />
-          <span className="hidden sm:inline font-semibold">
-            {user?.role === 'creator' ? 'Creator' : 'Learner'}
-          </span>
+          <span className="hidden sm:inline">{user?.email || 'Logout'}</span>
         </Button>
       </div>
 
       {showNavigation && plan && (
-        <TopNavigation 
-          schedule={plan.schedule} 
+        <TopNavigation
+          schedule={plan.schedule}
           currentDay={
             state.step === 'flashcards' || 
             state.step === 'day-cover' || 
@@ -224,8 +208,8 @@ const Index = () => {
             state.step === 'day-complete' ||
             state.step === 'quiz' ||
             state.step === 'loading-quiz'
-              ? state.currentDay 
-              : -1
+            ? state.currentDay
+            : -1
           }
           completedDays={completedDays}
           onDayClick={goToDay}
@@ -254,8 +238,8 @@ const Index = () => {
             state.step === 'flashcards' || 
             state.step === 'day-cover' || 
             state.step === 'quiz' 
-              ? `-${state.currentDay}` 
-              : ''
+            ? `-${state.currentDay}` 
+            : ''
           )}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

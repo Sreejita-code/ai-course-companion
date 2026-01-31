@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, ArrowRight, Trophy, ThumbsUp } from 'lucide-react';
-import { useAuth } from '@/lib/auth';
 
 interface DayCompleteViewProps {
   dayNumber: number;
@@ -10,9 +9,7 @@ interface DayCompleteViewProps {
 }
 
 export function DayCompleteView({ dayNumber, totalDays, onProceed }: DayCompleteViewProps) {
-  const { user } = useAuth();
-  const isCreator = user?.role === 'creator';
-  const [showAnimation, setShowAnimation] = useState(!isCreator);
+  const [showAnimation, setShowAnimation] = useState(true);
   const isLastDay = dayNumber === totalDays;
 
   useEffect(() => {
@@ -39,20 +36,20 @@ export function DayCompleteView({ dayNumber, totalDays, onProceed }: DayComplete
           >
             <motion.div
               initial={{ rotate: -20, scale: 0.8 }}
-              animate={{
+              animate={{ 
                 rotate: [0, -10, 10, -5, 5, 0], // Shake/Wobble effect
                 scale: 1.2
               }}
-              transition={{
+              transition={{ 
                 delay: 0.2,
-                duration: 1.5,
-                ease: "easeInOut"
+                duration: 1.5, 
+                ease: "easeInOut" 
               }}
               className="w-48 h-48 rounded-full gold-gradient flex items-center justify-center shadow-2xl mb-8"
             >
               <ThumbsUp className="w-24 h-24 text-primary-foreground fill-current" />
             </motion.div>
-
+            
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -162,8 +159,9 @@ export function DayCompleteView({ dayNumber, totalDays, onProceed }: DayComplete
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.9 + i * 0.1 }}
-                  className={`w-3 h-3 rounded-full ${i + 1 <= dayNumber ? 'gold-gradient' : 'bg-muted'
-                    }`}
+                  className={`w-3 h-3 rounded-full ${
+                    i + 1 <= dayNumber ? 'gold-gradient' : 'bg-muted'
+                  }`}
                 />
               ))}
             </motion.div>
