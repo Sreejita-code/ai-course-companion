@@ -15,7 +15,7 @@ export interface TopicItem {
   tag: 'needed' | 'not needed';
 }
 
-// Subtopic with content for flashcards
+// Subtopic with content for flashcards (Frontend State)
 export interface Subtopic {
   subtopic_name: string;
   flashcard_content: string[];
@@ -25,7 +25,7 @@ export interface Subtopic {
   reference?: string;
 }
 
-// Course Module (from API response)
+// Course Module (Frontend State)
 export interface CourseModule {
   topic: string;
   tag: 'needed' | 'not needed';
@@ -47,7 +47,7 @@ export interface CoursePlan {
   modules?: CourseModule[];
   total_duration?: number;
   course_id?: string; // Backend course ID for API calls
-  isPublished?: boolean; // <--- ADDED THIS
+  isPublished?: boolean; 
 }
 
 // Flashcard for display
@@ -79,7 +79,8 @@ export interface Persona {
   tone?: string;
 }
 
-// API Response Types
+// --- API Response Types ---
+
 export interface CourseDraftResponse {
   course_id: string;
   topic: string;
@@ -109,8 +110,61 @@ export interface ContentGenerationResponse {
   message: string;
 }
 
+// --- Search & Learner Types ---
+
+// 1. Schema for API Response (Full Course Data)
+export interface FlashcardSchema {
+  title: string;
+  content: string[];
+  emoji: string;
+}
+
+export interface SubtopicSchema {
+  title: string;
+  description: string;
+  flashcards: FlashcardSchema[];
+  audio_script?: string;
+  duration_minutes: number;
+}
+
+export interface ModuleSchema {
+  title: string;
+  subtopics: SubtopicSchema[];
+}
+
+// 2. Updated Search Result Summary
+export interface ExistingCourseSummary {
+  id: string;
+  title: string;
+  description: string;
+  creator_name: string;
+  match_score: number;
+  syllabus: ModuleSchema[]; // <--- ADDED: Full syllabus structure from backend
+}
+
+export interface AssessmentQuestion {
+  id: number;
+  question_text: string;
+  options: string[];
+  type: string;
+}
+
+export interface LearnerAssessmentResponse {
+  topic: string;
+  questions: AssessmentQuestion[];
+}
+
+export interface UserAnswer {
+  question_id: number;
+  question_text: string;
+  selected_option: string;
+}
+
 export type AppState = 
   | { step: 'search' }
+  | { step: 'learner-search-results'; topic: string; courses: ExistingCourseSummary[] }
+  | { step: 'learner-assessment'; topic: string; questions: AssessmentQuestion[] }
+  | { step: 'evaluating-assessment' }
   | { step: 'loading-syllabus' }
   | { step: 'syllabus' }
   | { step: 'loading-plan' }

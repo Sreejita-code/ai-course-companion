@@ -1,5 +1,7 @@
 import { useCourse } from '@/hooks/useCourse';
 import { SearchView } from '@/components/SearchView';
+import { LearnerSearchView } from '@/components/LearnerSearchView';
+import { AssessmentView } from '@/components/AssessmentView';
 import { LoadingView } from '@/components/LoadingView';
 import { DayCoverView } from '@/components/DayCoverView';
 import { FlashcardView } from '@/components/FlashcardView';
@@ -16,6 +18,8 @@ import { PersonaData } from '@/components/PersonaDialog';
 
 const Index = () => {
   const { logout, user } = useAuth();
+  // Identify if the current user is a learner
+  const isLearner = user?.role === 'user'; 
 
   const {
     state,
@@ -26,11 +30,12 @@ const Index = () => {
     error,
     isEditMode,
     editedModules,
-    isPublished, // <--- 1. Destructure isPublished state
+    isPublished,
+    
+    // Creator Actions
     generateSyllabus,
     saveCourseEdits,
-    generateModuleContent,
-    updateFlashcardContent,
+    togglePublish,
     toggleModule,
     startEditMode,
     cancelEditMode,
@@ -41,7 +46,17 @@ const Index = () => {
     reorderSubtopic,
     deleteModule,
     addModule,
-    togglePublish, // <--- 2. Destructure togglePublish action
+    
+    // Learner Actions
+    searchTopic,
+    startAssessment,
+    submitAssessment,
+    viewCourse,
+    fetchLearnerModuleContent,
+    
+    // Shared Actions
+    generateModuleContent,
+    updateFlashcardContent,
     goToDay,
     goToOverview,
     startDay,
@@ -52,28 +67,76 @@ const Index = () => {
     finishQuiz,
   } = useCourse();
 
+  // --- Handlers ---
   const handleGenerateCourse = async (topic: string, persona?: PersonaData) => {
     await generateSyllabus(topic, persona);
   };
 
+  /**
+   * Handles the "Start" action on a module.
+   * - Learners: Fetches existing, creator-defined content (read-only).
+   * - Creators: Generates new content via AI if not present (editable).
+   */
   const handleStartModule = async (dayNumber: number, moduleTitle: string) => {
-    await generateModuleContent(moduleTitle, dayNumber);
+    if (isLearner) {
+      await fetchLearnerModuleContent(moduleTitle, dayNumber);
+    } else {
+      await generateModuleContent(moduleTitle, dayNumber);
+    }
   };
 
   const showNavigation = plan && 
     state.step !== 'search' && 
+    state.step !== 'learner-search-results' && 
+    state.step !== 'learner-assessment' &&
     state.step !== 'loading-syllabus' && 
     state.step !== 'loading-plan' && 
     state.step !== 'course-complete';
 
+  // --- Main Render Logic ---
   const renderContent = () => {
     switch (state.step) {
+      // 1. Search (Split by Role)
       case 'search':
+        if (isLearner) {
+          return (
+            <LearnerSearchView 
+              onSearch={searchTopic} 
+              onTakeAssessment={startAssessment}
+              onViewCourse={viewCourse}
+            />
+          );
+        }
         return <SearchView onSubmit={handleGenerateCourse} />;
 
-      case 'loading-syllabus':
-        return <LoadingView message="Designing your curriculum..." />;
+      // 2. Learner Specific Steps
+      case 'learner-search-results':
+        return (
+          <LearnerSearchView 
+            onSearch={searchTopic} 
+            searchResults={state.courses}
+            searchedTopic={state.topic}
+            onTakeAssessment={startAssessment}
+            onViewCourse={viewCourse}
+          />
+        );
 
+      case 'learner-assessment':
+        return (
+          <AssessmentView 
+            topic={state.topic!} 
+            questions={state.questions!} 
+            onSubmit={(answers) => submitAssessment(state.topic!, answers)}
+          />
+        );
+
+      case 'evaluating-assessment':
+        return <LoadingView message="Analyzing your answers and building your custom syllabus..." />;
+
+      case 'loading-syllabus':
+        return <LoadingView message={isLearner ? "Searching our library..." : "Designing your curriculum..."} />;
+
+      // 3. Overview (Shared, but restricted for Learner)
       case 'overview':
         if (!plan) return null;
         return (
@@ -82,28 +145,36 @@ const Index = () => {
             modules={plan.modules}
             totalDuration={plan.total_duration}
             courseId={courseId || undefined}
-            isEditMode={isEditMode}
-            editedModules={editedModules}
-            isPublished={isPublished} // <--- 3. Pass isPublished prop
+            
+            // Edit Mode: Forced false for learners
+            isEditMode={!isLearner && isEditMode} 
+            editedModules={!isLearner ? editedModules : undefined}
+            
+            // Publish: Creator only
+            isPublished={isPublished}
+            onTogglePublish={!isLearner ? togglePublish : undefined}
+            
+            // Actions
             onDayClick={goToDay}
-            onToggleModule={toggleModule}
-            onStartModule={handleStartModule}
-            onStartEditMode={startEditMode}
-            onCancelEditMode={cancelEditMode}
-            onSaveEdits={saveCourseEdits}
-            onUpdateModuleTitle={updateModuleTitle}
-            onUpdateSubtopicTitle={updateSubtopicTitle}
-            onDeleteSubtopic={deleteSubtopic}
-            onAddSubtopic={addSubtopic}
-            onReorderSubtopic={reorderSubtopic}
-            onDeleteModule={deleteModule}
-            onAddModule={addModule}
-            onTogglePublish={togglePublish} // <--- 4. Pass togglePublish callback
+            onStartModule={handleStartModule} // Uses branching logic
+            
+            // Creator Actions (Only passed if !isLearner)
+            onToggleModule={!isLearner ? toggleModule : undefined}
+            onStartEditMode={!isLearner ? startEditMode : undefined}
+            onCancelEditMode={!isLearner ? cancelEditMode : undefined}
+            onSaveEdits={!isLearner ? saveCourseEdits : undefined}
+            onUpdateModuleTitle={!isLearner ? updateModuleTitle : undefined}
+            onUpdateSubtopicTitle={!isLearner ? updateSubtopicTitle : undefined}
+            onDeleteSubtopic={!isLearner ? deleteSubtopic : undefined}
+            onAddSubtopic={!isLearner ? addSubtopic : undefined}
+            onReorderSubtopic={!isLearner ? reorderSubtopic : undefined}
+            onDeleteModule={!isLearner ? deleteModule : undefined}
+            onAddModule={!isLearner ? addModule : undefined}
           />
         );
 
       case 'loading-plan':
-        return <LoadingView message="Building your personalized course..." />;
+        return <LoadingView message="Loading course content..." />;
 
       case 'day-cover':
         if (!plan) return null;
@@ -119,7 +190,7 @@ const Index = () => {
         );
 
       case 'loading-content':
-        return <LoadingView message={`Generating content for this module...`} />;
+        return <LoadingView message={isLearner ? "Fetching content..." : "Generating content..."} />;
 
       case 'flashcards':
         const content = dayContents[state.currentDay];
@@ -138,8 +209,8 @@ const Index = () => {
             courseId={courseId || undefined}
             onNext={nextCard}
             onPrevious={previousCard}
-            onCardUpdate={(index, newContent, newAudioScript) => {
-              // Update local state and call API
+            // Pass undefined to onCardUpdate for learners to hide the edit button
+            onCardUpdate={!isLearner ? (index, newContent, newAudioScript) => {
               const flashcard = content.flashcards[index];
               if (flashcard && state.moduleTitle) {
                 updateFlashcardContent(
@@ -149,7 +220,7 @@ const Index = () => {
                   newAudioScript || flashcard.audioScript || ''
                 );
               }
-            }}
+            } : undefined}
           />
         );
 
@@ -188,6 +259,16 @@ const Index = () => {
         );
 
       default:
+        // Default fallback to correct search view
+        if (isLearner) {
+          return (
+            <LearnerSearchView 
+              onSearch={searchTopic} 
+              onTakeAssessment={startAssessment}
+              onViewCourse={viewCourse} 
+            />
+          );
+        }
         return <SearchView onSubmit={handleGenerateCourse} />;
     }
   };
@@ -209,7 +290,7 @@ const Index = () => {
         >
           <LogOut className="w-4 h-4" />
           <span className="hidden sm:inline font-semibold">
-            {user?.role === 'creator' ? 'Creator' : 'Learner'}
+            {user?.role === 'creator' ? 'Creator Dashboard' : 'Learner Dashboard'}
           </span>
         </Button>
       </div>

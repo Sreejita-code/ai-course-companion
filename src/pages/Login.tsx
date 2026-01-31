@@ -70,7 +70,7 @@ const Login = () => {
           <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground">
             Learn<span className="text-gold-gradient">Book</span>
           </h1>
-          <p className="text-muted-foreground mt-2">Creator Mode</p>
+          {/* <p className="text-muted-foreground mt-2">Creator Mode</p> */}
         </motion.div>
 
         {/* Login Card */}

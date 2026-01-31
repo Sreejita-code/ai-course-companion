@@ -50,7 +50,7 @@ const KeywordPopover = ({ word, context }: { word: string, context: string }) =>
     if (isOpen && !explanation && !loading) {
       setLoading(true);
       try {
-        // Ensure this matches your backend port (8001)
+        // Ensure this matches your backend port (8000/8001)
         const response = await fetch('http://127.0.0.1:8000/explain-term', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -63,7 +63,7 @@ const KeywordPopover = ({ word, context }: { word: string, context: string }) =>
         setExplanation(data.explanation);
       } catch (error) {
         console.error(error);
-        setExplanation("Could not load explanation. Ensure backend is running on port 8001.");
+        setExplanation("Could not load explanation. Ensure backend is running on port 8000.");
       } finally {
         setLoading(false);
       }
@@ -236,18 +236,15 @@ export function FlashcardView({
       let response;
       
       if (targetCard.audioScript) {
-          // --- UPDATED CODE START ---
           response = await fetch('http://127.0.0.1:8000/generate-audio', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
               text: targetCard.audioScript,
-              language: language // <--- NOW SENDING LANGUAGE
+              language: language
             }),
           });
-          // --- UPDATED CODE END ---
       } else {
-          // Fallback logic remains same
           response = await fetch('http://127.0.0.1:8000/generate-detailed-audio', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -342,7 +339,6 @@ export function FlashcardView({
 
     try {
       setIsLoadingSimplify(true);
-      // Updated Port to 8001
       const response = await fetch('http://127.0.0.1:8000/simplify-content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -380,7 +376,6 @@ export function FlashcardView({
   const handleDownloadPdf = async () => {
     setIsDownloading(true);
     try {
-        // Updated Port to 8001
         const response = await fetch('http://127.0.0.1:8000/generate-pdf', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -511,16 +506,11 @@ export function FlashcardView({
         }
     }
 
-    // --- Fixed Sizing to match Screenshot for ALL cards ---
     const charCount = textToRender.length;
-    
-    // Fixed font size and consistent comfortable spacing
     const containerSpace = "space-y-4"; 
     const lineHeight = "leading-relaxed";
-    const fontSize = "text-base md:text-lg"; // Consistent large font
+    const fontSize = "text-base md:text-lg"; 
     const fontColor = "text-foreground/90";
-    
-    // Switch vertical alignment based on length, but keep font size consistent
     const justifyContent = charCount > 250 ? "justify-start" : "justify-center";
 
     const lines = textToRender.split('\n').filter(line => line.trim().length > 0);
@@ -529,7 +519,6 @@ export function FlashcardView({
       <div className={`flex flex-col h-full ${justifyContent} pb-24`}>
         <div className={containerSpace}>
             {lines.map((line, lineIndex) => {
-            // Updated Split Logic
             const parts = line.split(/(\*\*.*?\*\*)/g);
             
             return (
@@ -538,17 +527,15 @@ export function FlashcardView({
                 className={`${fontSize} ${fontColor} ${lineHeight} font-body flex flex-wrap items-baseline`}
                 >
                 {parts.map((part, partIndex) => {
-                    // Check if part is a bolded keyword
                     if (part.startsWith('**') && part.endsWith('**')) {
-                        const cleanWord = part.slice(2, -2); // Remove **
+                        const cleanWord = part.slice(2, -2);
                         return (
                             <div key={partIndex} className="inline-block mr-1.5">
-                                <KeywordPopover word={cleanWord} context={textToRender} />
+                                <KeywordPopover word={cleanWord} context={textToRender as string} />
                             </div>
                         );
                     }
                     
-                    // Normal Text
                     const words = part.split(' ').filter(Boolean);
                     if (words.length === 0) return null;
 
@@ -564,18 +551,14 @@ export function FlashcardView({
                 </div>
             );
             })}
-            
-            {/* Inline Reference Section REMOVED as per request */}
         </div>
       </div>
     );
   };
 
   return (
-    // Reduced padding on main container
     <div className="flex-1 flex flex-col items-center justify-center px-4 py-2 h-full min-h-[500px]">
       
-      {/* Topic Header - Reduced margin (REPLACED DAY HEADER) */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -589,7 +572,6 @@ export function FlashcardView({
         </p>
       </motion.div>
 
-      {/* Book Container */}
       <div className="w-full max-w-3xl perspective-1000">
         <AnimatePresence mode="wait">
           <motion.div
@@ -597,7 +579,6 @@ export function FlashcardView({
             className="relative"
             initial={false}
           >
-            {/* Page Turn Effect */}
             <motion.div
               animate={isPageTurning ? {
                 rotateY: -180,
@@ -613,22 +594,18 @@ export function FlashcardView({
               }}
               className="relative"
             >
-              {/* Book Page - COMPACT FIXED HEIGHT */}
               <div 
                 className="h-[400px] md:h-[450px] bg-card rounded-2xl book-shadow border border-border overflow-hidden page-texture"
                 style={{ backfaceVisibility: 'hidden' }}
               >
-                {/* Gold Spine Edge */}
                 <div className="absolute left-0 top-0 bottom-0 w-2 gold-gradient rounded-l-2xl" />
                 
-                {/* Gold Corner Accents */}
                 <div className="absolute top-4 right-4 w-10 h-10 border-t-2 border-r-2 border-primary/30 rounded-tr-lg" />
                 <div className="absolute bottom-4 left-6 w-10 h-10 border-b-2 border-l-2 border-primary/30 rounded-bl-lg" />
 
-                {/* Content Container - Reduced padding */}
                 <div className="relative p-6 md:p-10 pl-8 md:pl-14 h-full flex flex-col">
                   
-                  {/* Title - Animated Position */}
+                  {/* --- Title Center Animation with Emoji --- */}
                   <AnimatePresence mode="wait">
                     {(phase === 'title-center' || phase === 'blank') && (
                       <motion.div
@@ -637,8 +614,11 @@ export function FlashcardView({
                         animate={{ opacity: phase === 'blank' ? 0 : 1, scale: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="absolute inset-0 flex items-center justify-center z-10"
+                        className="absolute inset-0 flex flex-col items-center justify-center z-10 space-y-4"
                       >
+                        {card.flashcard_emoji && (
+                            <span className="text-6xl animate-bounce-slow">{card.flashcard_emoji}</span>
+                        )}
                         <h3 className="font-display text-2xl md:text-3xl font-bold text-center text-foreground px-8 leading-tight">
                           {card.title}
                         </h3>
@@ -646,7 +626,7 @@ export function FlashcardView({
                     )}
                   </AnimatePresence>
                   
-                  {/* Title in Final Position */}
+                  {/* --- Title in Final Position with Emoji --- */}
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{
@@ -660,7 +640,8 @@ export function FlashcardView({
                          <span className="text-[10px] md:text-xs font-semibold text-primary uppercase tracking-wider">
                          Concept {currentIndex + 1}
                          </span>
-                         {!isEditing && (
+                         {/* --- HIDE EDIT BUTTON IF USER IS LEARNER --- */}
+                         {!isEditing && onCardUpdate && (
                             <Button 
                                 variant="ghost" 
                                 size="sm" 
@@ -672,12 +653,12 @@ export function FlashcardView({
                             </Button>
                          )}
                     </div>
-                    <h3 className="font-display text-xl md:text-2xl font-bold text-foreground pb-2 border-b border-border">
+                    <h3 className="font-display text-xl md:text-2xl font-bold text-foreground pb-2 border-b border-border flex items-center gap-3">
+                        {card.flashcard_emoji && <span>{card.flashcard_emoji}</span>}
                         {card.title}
                     </h3>
                   </motion.div>
 
-                  {/* Content Area - NO SCROLL */}
                   <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{
@@ -690,7 +671,6 @@ export function FlashcardView({
                       {renderContent()}
                   </motion.div>
                   
-                  {/* Controls Container - Increased spacing */}
                   <motion.div 
                       initial={{ opacity: 0 }}
                       animate={{ opacity: phase === 'content-reveal' || phase === 'complete' ? 1 : 0 }}
@@ -698,7 +678,6 @@ export function FlashcardView({
                   >
                     {!isEditing && (
                         <>
-                        {/* Download PDF - Increased Size */}
                         <Button
                             variant="outline"
                             size="icon"
@@ -710,7 +689,6 @@ export function FlashcardView({
                             {isDownloading ? <Loader2 className="w-5 h-5 animate-spin"/> : <FileText className="w-5 h-5" />}
                         </Button>
 
-                        {/* Reference - Increased Size */}
                         <Button
                         variant="outline"
                         size="icon"
@@ -725,7 +703,6 @@ export function FlashcardView({
                         <Link2 className="w-5 h-5" />
                         </Button>
 
-                        {/* Simplify - Increased Size */}
                         <Button
                         variant="secondary"
                         onClick={handleSimplify}
@@ -736,7 +713,6 @@ export function FlashcardView({
                         <span className="text-sm font-semibold">Simplify</span>
                         </Button>
 
-                        {/* Mic / Audio - Increased Size */}
                         {isPlaying || isLoadingAudio ? (
                         <Button
                             variant="outline"
@@ -781,7 +757,6 @@ export function FlashcardView({
                     )}
                   </motion.div>
 
-                  {/* Previous Page Button */}
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: phase === 'content-reveal' || phase === 'complete' ? 1 : 0 }}
@@ -808,7 +783,6 @@ export function FlashcardView({
                     )}
                   </motion.div>
 
-                  {/* Next Page Button */}
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: phase === 'complete' ? 1 : 0 }}
@@ -841,7 +815,6 @@ export function FlashcardView({
                 </div>
               </div>
 
-              {/* Back of current page */}
               <div 
                 className="absolute inset-0 h-[400px] md:h-[450px] bg-card rounded-2xl book-shadow page-texture"
                 style={{ 
@@ -851,7 +824,6 @@ export function FlashcardView({
               />
             </motion.div>
 
-            {/* Next page preview */}
             {isPageTurning && currentIndex < flashcards.length - 1 && (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -859,7 +831,10 @@ export function FlashcardView({
                 className="absolute inset-0 h-[400px] md:h-[450px] bg-card rounded-2xl book-shadow border border-border page-texture -z-10"
               >
                 <div className="absolute left-0 top-0 bottom-0 w-2 gold-gradient rounded-l-2xl" />
-                <div className="p-6 md:p-10 pl-8 md:pl-14 flex items-center justify-center h-full">
+                <div className="p-6 md:p-10 pl-8 md:pl-14 flex items-center justify-center h-full flex-col gap-4">
+                  {flashcards[currentIndex + 1]?.flashcard_emoji && (
+                      <span className="text-5xl opacity-50">{flashcards[currentIndex + 1]?.flashcard_emoji}</span>
+                  )}
                   <h3 className="font-display text-2xl md:text-3xl font-bold text-center text-foreground/50">
                     {flashcards[currentIndex + 1]?.title}
                   </h3>
@@ -870,7 +845,6 @@ export function FlashcardView({
         </AnimatePresence>
       </div>
 
-      {/* Reference Dialog (Detailed View) */}
       <Dialog open={referenceOpen} onOpenChange={setReferenceOpen}>
         <DialogContent className="sm:max-w-2xl border-2 border-blue-100 shadow-2xl bg-white/95 backdrop-blur-md">
           <DialogHeader>
@@ -923,7 +897,6 @@ export function FlashcardView({
         </DialogContent>
       </Dialog>
 
-      {/* Simplified Content Dialog */}
       <Dialog open={simplifyOpen} onOpenChange={setSimplifyOpen}>
         <DialogContent className="sm:max-w-lg border-2 border-indigo-100 shadow-2xl bg-white/95 backdrop-blur-md">
           <DialogHeader className="pb-4 border-b border-indigo-50">
@@ -967,7 +940,6 @@ export function FlashcardView({
         </DialogContent>
       </Dialog>
 
-      {/* Progress Bar - Reduced margin */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
