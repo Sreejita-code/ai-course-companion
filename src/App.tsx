@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import Index from "./pages/Index";
+import LearnerIndex from "./pages/LearnerIndex";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -41,6 +42,19 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Role-based route component
+function RoleBasedRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  
+  // If user is a learner, show learner interface
+  if (user?.role === 'learner') {
+    return <LearnerIndex />;
+  }
+  
+  // Default to creator interface
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -51,6 +65,24 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route 
             path="/" 
+            element={
+              <ProtectedRoute>
+                <RoleBasedRoute>
+                  <Index />
+                </RoleBasedRoute>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/learn" 
+            element={
+              <ProtectedRoute>
+                <LearnerIndex />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/create" 
             element={
               <ProtectedRoute>
                 <Index />
